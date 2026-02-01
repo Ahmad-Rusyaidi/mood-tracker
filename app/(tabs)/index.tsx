@@ -8,7 +8,8 @@ import { DayCalendar } from "@/components/mood/DayCalendar";
 import { WeekCalendar } from "@/components/mood/WeekCalendar";
 import { useMoodEntries } from "@/hooks";
 import { toISODateLocal } from "@/utils";
-import { moodToEmoji } from "@/utils/moodUi";
+
+import { moodStorage } from "@/storage";
 
 type ViewMode = "day" | "week" | "month";
 
@@ -18,7 +19,7 @@ export default function HomeScreen() {
   const [selectedDate, setSelectedDate] = useState(toISODateLocal(today));
   const [viewMode, setViewMode] = useState<ViewMode>("month");
 
-  const { map, getByDate, setMoodForDate } = useMoodEntries();
+  const { map, getByDate, setMoodForDate, refresh } = useMoodEntries();
   const selectedEntry = getByDate(selectedDate);
 
   // For Day/Week: if already saved, hide picker unless user taps "Change mood"
@@ -84,43 +85,36 @@ export default function HomeScreen() {
         )}
 
         {viewMode === "day" && (
-          <DayCalendar selectedDate={selectedDate} entry={selectedEntry} />
+          <DayCalendar
+            selectedDate={selectedDate}
+            entry={selectedEntry}
+            onChangeMood={(mood) => void setMoodForDate(selectedDate, mood)}
+          />
         )}
+
       </View>
 
-      {/* Bottom */}
-      <View style={styles.bottom}>
-        <Text style={styles.dateText}>{selectedDate}</Text>
+      {viewMode !== "day" && (
+        <View style={styles.bottom}>
+          <Text style={styles.dateText}>{selectedDate}</Text>
+          <Text style={styles.hint}>Tap an emoji to save today’s mood.</Text>
 
-        {/* If mood exists and not month view and not editing: show summary */}
-        {selectedEntry && viewMode !== "month" && !isEditingMood ? (
-          <View style={styles.summary}>
-            <Text style={styles.bigEmoji}>
-              {moodToEmoji[selectedEntry.mood]}
-            </Text>
-            <Text style={styles.savedText}>Saved: {selectedEntry.mood}</Text>
+          <MoodPicker
+            value={selectedEntry?.mood ?? null}
+            onChange={(mood) => void setMoodForDate(selectedDate, mood)}
+          />
+        </View>
+      )}
 
-            <Pressable onPress={() => setIsEditingMood(true)}>
-              <Text style={styles.changeLink}>Change mood</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <>
-            <Text style={styles.hint}>
-              {viewMode === "month"
-                ? "Pick a mood for the selected day."
-                : "How are you feeling today?"}
-            </Text>
-
-            {shouldShowPicker && (
-              <MoodPicker
-                value={selectedEntry?.mood ?? null}
-                onChange={(mood) => void setMoodForDate(selectedDate, mood)}
-              />
-            )}
-          </>
-        )}
-      </View>
+      <Text
+        onPress={async () => {
+          await moodStorage.clearAll();
+          await refresh(); // if you have refresh from hook, see note below
+        }}
+        style={{ color: "#EF4444", fontWeight: "700", marginTop: 8 }}
+      >
+        Reset all data
+      </Text>
     </SafeAreaView>
   );
 }

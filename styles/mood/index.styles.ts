@@ -16,11 +16,13 @@ export const styles = StyleSheet.create({
     marginBottom: 12,
   },
   togglePill: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
+  width: 90,
+  paddingVertical: 8,
+  borderRadius: 999,
+  borderWidth: 1,
+  alignItems: "center",
+  justifyContent: "center",
+},
   togglePillActive: {
     backgroundColor: colors.primary ?? "#C9D7FF",
     borderColor: "#AFC2FF",
