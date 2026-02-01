@@ -9,3 +9,5 @@ export type MoodEntry = {
   createdAt: number; // epoch ms
   updatedAt: number; // epoch ms
 };
+
+export type CalendarViewMode = "day" | "week" | "month";

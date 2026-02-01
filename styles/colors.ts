@@ -1,13 +1,18 @@
 export const colors = {
-  background: "#FFFFFF",
-  text: "#111827",
+  background: "#F7F8FC",
+  card: "#FFFFFF",
+  text: "#1F2937",
   mutedText: "#6B7280",
-  border: "#E5E7EB",
+  border: "#E6E8F0",
 
-  // mood accent examples (optional use later)
-  happy: "#F59E0B",
-  sad: "#3B82F6",
-  angry: "#EF4444",
-  neutral: "#10B981",
-  anxious: "#8B5CF6",
+  // Pastel mood accents
+  happy: "#FFE8A3",
+  sad: "#CFE8FF",
+  angry: "#FFC7C7",
+  neutral: "#D9FBE5",
+  anxious: "#E8D7FF",
+
+  // UI accents
+  primary: "#C9D7FF",
+  shadow: "rgba(17, 24, 39, 0.08)",
 } as const;

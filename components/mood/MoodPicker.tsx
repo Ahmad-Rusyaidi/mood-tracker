@@ -1,8 +1,9 @@
-import { spacing } from "@/styles";
 import type { Mood } from "@/types";
 import React from "react";
-import { StyleSheet, View } from "react-native";
+import { View } from "react-native";
 import { MoodButton } from "./MoodButton";
+
+import { styles } from "@/styles/mood/MoodPicker.styles";
 
 const MOOD_UI: Array<{ mood: Mood; emoji: string; label: string }> = [
   { mood: "happy", emoji: "😄", label: "Happy" },
@@ -34,13 +35,3 @@ export function MoodPicker({ value, onChange }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    gap: spacing.sm,
-    flexWrap: "wrap",
-  },
-  item: {
-    flexGrow: 1,
-  },
-});

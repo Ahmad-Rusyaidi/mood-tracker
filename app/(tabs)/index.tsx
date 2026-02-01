@@ -1,63 +1,126 @@
-import { MonthCalendar, MoodPicker } from "@/components/mood";
-import { useMoodEntries } from "@/hooks";
-import { colors, spacing, typography } from "@/styles";
-import { toISODateLocal } from "@/utils";
-import React, { useMemo, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { styles } from "@/styles/mood/index.styles";
+import React, { useEffect, useMemo, useState } from "react";
+import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+import { MonthCalendar, MoodPicker } from "@/components/mood";
+import { DayCalendar } from "@/components/mood/DayCalendar";
+import { WeekCalendar } from "@/components/mood/WeekCalendar";
+import { useMoodEntries } from "@/hooks";
+import { toISODateLocal } from "@/utils";
+import { moodToEmoji } from "@/utils/moodUi";
+
+type ViewMode = "day" | "week" | "month";
 
 export default function HomeScreen() {
   const today = useMemo(() => new Date(), []);
   const [month, setMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [selectedDate, setSelectedDate] = useState(toISODateLocal(today));
+  const [viewMode, setViewMode] = useState<ViewMode>("month");
 
   const { map, getByDate, setMoodForDate } = useMoodEntries();
   const selectedEntry = getByDate(selectedDate);
 
+  // For Day/Week: if already saved, hide picker unless user taps "Change mood"
+  const [isEditingMood, setIsEditingMood] = useState(false);
+
+  // Reset editing state when date or mode changes
+  useEffect(() => {
+    setIsEditingMood(false);
+  }, [selectedDate, viewMode]);
+
+  const handleSelectDateFromMonth = (date: string) => {
+    setSelectedDate(date);
+    setViewMode("day"); // 👈 jump to Day view
+  };
+
+  const shouldShowPicker =
+    viewMode === "month" || !selectedEntry || isEditingMood;
+
   return (
     <SafeAreaView style={styles.container}>
+      {/* Toggle */}
+      <View style={styles.toggleRow}>
+        {(["day", "week", "month"] as const).map((m) => {
+          const active = viewMode === m;
+          return (
+            <Pressable
+              key={m}
+              onPress={() => setViewMode(m)}
+              style={[styles.togglePill, active ? styles.togglePillActive : styles.togglePillInactive]}
+            >
+              <Text style={[styles.toggleText, active ? styles.toggleTextActive : styles.toggleTextInactive]}>
+                {m.toUpperCase()}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
 
-      <MonthCalendar
-        month={month}
-        selectedDate={selectedDate}
-        entriesMap={map}
-        onChangeMonth={setMonth}
-        onSelectDate={setSelectedDate}
-      />
+      {/* Calendar area */}
+      <View style={styles.calendarArea}>
+        {viewMode === "month" && (
+          <MonthCalendar
+            month={month}
+            selectedDate={selectedDate}
+            entriesMap={map}
+            onChangeMonth={setMonth}
+            onSelectDate={handleSelectDateFromMonth}
+            variant="pastel"
+            size="normal"
+          />
+        )}
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{selectedDate}</Text>
-        <Text style={styles.sectionHint}>Tap an emoji to save today’s mood.</Text>
+        {viewMode === "week" && (
+          <WeekCalendar
+            anchorDate={new Date(selectedDate)}
+            selectedDate={selectedDate}
+            entriesMap={map}
+            onSelectDate={(date) => {
+              setSelectedDate(date);
+              setViewMode("day");
+            }}
+          />
+        )}
 
-        <MoodPicker
-          value={selectedEntry?.mood ?? null}
-          onChange={(mood) => void setMoodForDate(selectedDate, mood)}
-        />
+        {viewMode === "day" && (
+          <DayCalendar selectedDate={selectedDate} entry={selectedEntry} />
+        )}
+      </View>
+
+      {/* Bottom */}
+      <View style={styles.bottom}>
+        <Text style={styles.dateText}>{selectedDate}</Text>
+
+        {/* If mood exists and not month view and not editing: show summary */}
+        {selectedEntry && viewMode !== "month" && !isEditingMood ? (
+          <View style={styles.summary}>
+            <Text style={styles.bigEmoji}>
+              {moodToEmoji[selectedEntry.mood]}
+            </Text>
+            <Text style={styles.savedText}>Saved: {selectedEntry.mood}</Text>
+
+            <Pressable onPress={() => setIsEditingMood(true)}>
+              <Text style={styles.changeLink}>Change mood</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <>
+            <Text style={styles.hint}>
+              {viewMode === "month"
+                ? "Pick a mood for the selected day."
+                : "How are you feeling today?"}
+            </Text>
+
+            {shouldShowPicker && (
+              <MoodPicker
+                value={selectedEntry?.mood ?? null}
+                onChange={(mood) => void setMoodForDate(selectedDate, mood)}
+              />
+            )}
+          </>
+        )}
       </View>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: spacing.md,
-    backgroundColor: colors.background,
-    gap: spacing.lg,
-  },
-  title: {
-    ...typography.title,
-    color: colors.text,
-  },
-  section: {
-    gap: spacing.sm,
-  },
-  sectionTitle: {
-    ...typography.subtitle,
-    color: colors.text,
-  },
-  sectionHint: {
-    ...typography.caption,
-    color: colors.mutedText,
-  },
-});
