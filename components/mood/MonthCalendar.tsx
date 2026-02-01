@@ -20,6 +20,9 @@ type Props = {
   onChangeMonth: (nextMonth: Date) => void;
   onSelectDate: (date: string) => void;
 
+  // ✅ new: dim logic provided by parent
+  dimDay?: (date: string, entry?: MoodEntry) => boolean;
+
   variant?: "pastel";
   size?: "large" | "normal";
 };
@@ -37,6 +40,7 @@ export function MonthCalendar({
   entriesMap,
   onChangeMonth,
   onSelectDate,
+  dimDay,
   variant = "pastel",
   size = "normal",
 }: Props) {
@@ -89,6 +93,7 @@ export function MonthCalendar({
         </Pressable>
       </View>
 
+      {/* Month mood summary */}
       <View style={{ flexDirection: "row", gap: 12, justifyContent: "center", marginBottom: 10 }}>
         {Object.entries(summary).map(([mood, count]) =>
           count > 0 ? (
@@ -98,7 +103,6 @@ export function MonthCalendar({
           ) : null
         )}
       </View>
-
 
       {/* Day of week */}
       <View style={[styles.dowRow, { gap }]}>
@@ -113,12 +117,7 @@ export function MonthCalendar({
       <View style={[styles.grid, { gap }]}>
         {grid.map((cellData, idx) => {
           if (!cellData.date || !cellData.day) {
-            return (
-              <View
-                key={`blank-${idx}`}
-                style={{ width: cell.w, height: cell.h }}
-              />
-            );
+            return <View key={`blank-${idx}`} style={{ width: cell.w, height: cell.h }} />;
           }
 
           const date = cellData.date;
@@ -127,6 +126,8 @@ export function MonthCalendar({
           const isSelected = date === selectedDate;
           const entry = entriesMap[date];
           const hasEntry = !!entry;
+
+          const dim = dimDay?.(date, entry) ?? false;
 
           return (
             <Pressable
@@ -137,21 +138,13 @@ export function MonthCalendar({
                 { width: cell.w, height: cell.h },
                 hasEntry ? styles.dayWithMood : styles.dayEmpty,
                 isSelected && (hasEntry ? styles.dayWithMoodSelected : styles.daySelected),
+                dim ? styles.dayDim : null,
               ]}
               accessibilityRole="button"
               accessibilityLabel={`Select ${date}`}
             >
-              {/* Day number pinned top-left */}
-              <Text style={[styles.dayNum, isSelected && styles.dayNumSelected]}>
-                {day}
-              </Text>
-
-              {/* Content */}
-              {hasEntry ? (
-                <Text style={styles.moodEmojiBig}>
-                  {moodToEmoji[entry!.mood]}
-                </Text>
-              ) : null}
+              <Text style={[styles.dayNum, isSelected && styles.dayNumSelected]}>{day}</Text>
+              {hasEntry ? <Text style={styles.moodEmojiBig}>{moodToEmoji[entry!.mood]}</Text> : null}
             </Pressable>
           );
         })}

@@ -1,4 +1,3 @@
-//app/(tabs)/index.tsx
 import { styles } from "@/styles/mood/index.styles";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -12,6 +11,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { MonthCalendar } from "@/components/mood";
 import { DayCalendar } from "@/components/mood/DayCalendar";
+import {
+  makeDimPredicate,
+  MonthFilters,
+  type MonthFiltersState,
+} from "@/components/mood/MonthFilters";
 import { WeekCalendar } from "@/components/mood/WeekCalendar";
 import { useMoodEntries } from "@/hooks";
 import { moodStorage } from "@/storage";
@@ -19,6 +23,15 @@ import { spacing } from "@/styles";
 import { toISODateLocal } from "@/utils";
 
 type ViewMode = "day" | "week" | "month";
+
+function countActiveFilters(f: MonthFiltersState) {
+  return (
+    f.moods.length +
+    f.tags.length +
+    (f.onlyBadDays ? 1 : 0) +
+    (f.onlyStreakDays ? 1 : 0)
+  );
+}
 
 export default function HomeScreen() {
   const today = useMemo(() => new Date(), []);
@@ -28,12 +41,33 @@ export default function HomeScreen() {
   const [selectedDate, setSelectedDate] = useState(toISODateLocal(today));
   const [viewMode, setViewMode] = useState<ViewMode>("month");
 
-  const { map, getByDate, setMoodForDate, setTagsForDate, setNoteForDate, refresh } = useMoodEntries();
+  const { map, getByDate, setMoodForDate, setTagsForDate, setNoteForDate, refresh } =
+    useMoodEntries();
   const selectedEntry = getByDate(selectedDate);
 
+  // Filters state
+  const [filters, setFilters] = useState<MonthFiltersState>({
+    moods: [],
+    tags: [],
+    onlyBadDays: false,
+    onlyStreakDays: false,
+  });
+
+  // Panel open/close
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  // Dim predicate (only dims when filters are active)
+  const dimDay = useMemo(
+    () => makeDimPredicate({ filters, entriesMap: map, selectedDate }),
+    [filters, map, selectedDate]
+  );
+
+  const activeFilterCount = useMemo(() => countActiveFilters(filters), [filters]);
+
+  // Optional: when user leaves month view, auto-collapse filters panel
   useEffect(() => {
-    // keep if you want future editing behavior
-  }, [selectedDate, viewMode]);
+    if (viewMode !== "month") setFiltersOpen(false);
+  }, [viewMode]);
 
   const handleSelectDateFromMonth = (date: string) => {
     setSelectedDate(date);
@@ -62,7 +96,7 @@ export default function HomeScreen() {
       tension: 120,
       useNativeDriver: true,
     }).start();
-  }, [viewMode, pillWidth]);
+  }, [viewMode, pillWidth, indicatorX]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -72,10 +106,7 @@ export default function HomeScreen() {
           pointerEvents="none"
           style={[
             styles.toggleIndicator,
-            {
-              width: pillWidth,
-              transform: [{ translateX: indicatorX }],
-            },
+            { width: pillWidth, transform: [{ translateX: indicatorX }] },
           ]}
         />
 
@@ -111,15 +142,80 @@ export default function HomeScreen() {
       {/* Calendar area */}
       <View style={styles.calendarArea}>
         {viewMode === "month" && (
-          <MonthCalendar
-            month={month}
-            selectedDate={selectedDate}
-            entriesMap={map}
-            onChangeMonth={setMonth}
-            onSelectDate={handleSelectDateFromMonth}
-            variant="pastel"
-            size="normal"
-          />
+          <>
+            {/* ✅ Filters button */}
+            <View
+              style={{
+                width: "100%",
+                flexDirection: "row",
+                justifyContent: "flex-start", // 👈 left
+                marginBottom: 10,
+              }}
+            >
+              <Pressable
+                onPress={() => setFiltersOpen((v) => !v)}
+                style={{
+                  paddingHorizontal: 14,
+                  paddingVertical: 10,
+                  borderRadius: 999,
+                  backgroundColor: "#EEF2FF",
+                  borderWidth: 1,
+                  borderColor: "#AFC2FF",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <Text style={{ fontWeight: "900" }}>
+                  ☰ Filters
+                </Text>
+
+                {activeFilterCount > 0 ? (
+                  <View
+                    style={{
+                      minWidth: 22,
+                      height: 22,
+                      paddingHorizontal: 6,
+                      borderRadius: 999,
+                      backgroundColor: "#111827",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Text style={{ color: "white", fontWeight: "900", fontSize: 12 }}>
+                      {activeFilterCount}
+                    </Text>
+                  </View>
+                ) : null}
+
+                <Text style={{ fontWeight: "900", color: "#1F2937" }}>
+                  {filtersOpen ? "▴" : "▾"}
+                </Text>
+              </Pressable>
+            </View>
+
+            {/* ✅ Filters panel (collapsible) */}
+            {filtersOpen ? (
+              <MonthFilters
+                month={month}
+                entriesMap={map}
+                selectedDate={selectedDate}
+                value={filters}
+                onChange={setFilters}
+              />
+            ) : null}
+
+            <MonthCalendar
+              month={month}
+              selectedDate={selectedDate}
+              entriesMap={map}
+              onChangeMonth={setMonth}
+              onSelectDate={handleSelectDateFromMonth}
+              dimDay={dimDay}
+              variant="pastel"
+              size="normal"
+            />
+          </>
         )}
 
         {viewMode === "week" && (
@@ -143,7 +239,6 @@ export default function HomeScreen() {
             onChangeNote={(note) => void setNoteForDate(selectedDate, note)}
             entriesMap={map}
           />
-
         )}
       </View>
 

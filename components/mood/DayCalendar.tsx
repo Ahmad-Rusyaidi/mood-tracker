@@ -8,7 +8,7 @@ import {
   View,
 } from "react-native";
 
-import { Audio } from "expo-av";
+import { useAudioPlayer } from "expo-audio";
 import * as Haptics from "expo-haptics";
 import ConfettiCannon from "react-native-confetti-cannon";
 
@@ -38,6 +38,67 @@ function uniqClean(tags: string[]) {
   return Array.from(new Set(tags.map((t) => t.trim()).filter(Boolean)));
 }
 
+function startOfDay(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function parseISODate(iso: string) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
+function diffDaysFromToday(iso: string) {
+  const today = startOfDay(new Date());
+  const target = startOfDay(parseISODate(iso));
+  return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function formatFriendlyDate(iso: string) {
+  const dt = parseISODate(iso);
+  // e.g. "Sat, 7 Feb 2026"
+  return dt.toLocaleDateString(undefined, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+// ✅ Only special titles for yesterday/today/tomorrow.
+// Otherwise: show date as title.
+function getHeaderInfo(iso: string) {
+  const diff = diffDaysFromToday(iso);
+
+  if (diff === 0)
+    return { title: "Today’s vibe", showDate: true };
+  if (diff === -1)
+    return { title: "Yesterday recap", showDate: true };
+  if (diff === 1)
+    return { title: "Tomorrow preview", showDate: true };
+
+  // fallback: date only
+  return { title: formatFriendlyDate(iso), showDate: false };
+}
+
+
+// ✅ Cute subtitle variants
+function getCuteSubtitle(iso: string, hasEntry: boolean) {
+  const diff = diffDaysFromToday(iso);
+
+  if (hasEntry) {
+    if (diff === 0) return "Cute — mood locked in ✨";
+    if (diff === -1) return "A tiny recap moment 🧸";
+    if (diff === 1) return "Planning ahead? love that for you 💫";
+    return "Your vibe for " + formatFriendlyDate(iso);
+  }
+
+  // no entry yet
+  if (diff === 0) return "How’s your heart today? 💖";
+  if (diff === -1) return "What was the vibe yesterday? 🫶";
+  if (diff === 1) return "What vibe do you want tomorrow? 🌙";
+  return getDailyPrompt(iso); // keep your existing prompt for other days
+}
+
 export function DayCalendar({
   selectedDate,
   entry,
@@ -55,13 +116,12 @@ export function DayCalendar({
   const glowAnim = useRef(new Animated.Value(0)).current;
   const cardOpacity = useRef(new Animated.Value(1)).current;
 
-  // Sound
-  const soundRef = useRef<Audio.Sound | null>(null);
+  // ✅ expo-audio player
+  const sfxPlayer = useAudioPlayer(require("@/assets/sounds/mood-select.mp3"));
 
   // Note draft
   const [noteDraft, setNoteDraft] = useState(entry?.note ?? "");
 
-  // Keep draft in sync when switching dates / entries change
   useEffect(() => {
     setNoteDraft(entry?.note ?? "");
   }, [entry?.updatedAt]);
@@ -76,31 +136,13 @@ export function DayCalendar({
     }, 450);
 
     return () => clearTimeout(id);
-  }, [noteDraft, entry?.updatedAt, entry, onChangeNote]);
+  }, [noteDraft, entry, entry?.updatedAt, onChangeNote]);
 
   // Reset editing state when changing date / entry updates
   useEffect(() => {
     setIsEditing(!entry);
     cardOpacity.setValue(1);
-  }, [selectedDate, entry?.updatedAt, cardOpacity, entry]);
-
-  // Load sound once
-  useEffect(() => {
-    let mounted = true;
-
-    (async () => {
-      const { sound } = await Audio.Sound.createAsync(
-        require("@/assets/sounds/mood-select.mp3"),
-        { volume: 0.4 }
-      );
-      if (mounted) soundRef.current = sound;
-    })();
-
-    return () => {
-      mounted = false;
-      soundRef.current?.unloadAsync();
-    };
-  }, []);
+  }, [selectedDate, entry?.updatedAt, entry, cardOpacity]);
 
   const animateEmoji = () => {
     scaleAnim.setValue(0.85);
@@ -130,9 +172,10 @@ export function DayCalendar({
   };
 
   const playFeedback = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
-      await soundRef.current?.replayAsync();
+      sfxPlayer.seekTo(0);
+      sfxPlayer.play();
     } catch {}
   };
 
@@ -180,6 +223,13 @@ export function DayCalendar({
     } catch {}
   };
 
+  const headerInfo = useMemo(() => getHeaderInfo(selectedDate), [selectedDate]);
+
+  const subtitle = useMemo(
+    () => getCuteSubtitle(selectedDate, !!entry),
+    [selectedDate, entry]
+  );
+
   return (
     <View style={styles.container}>
       {/* Sparkle */}
@@ -206,7 +256,16 @@ export function DayCalendar({
         </View>
       )}
 
-      <Text style={styles.dateText}>{selectedDate}</Text>
+      {/* ✅ Header */}
+      <Text style={styles.dateText}>{headerInfo.title}</Text>
+      {headerInfo.showDate && (
+        <Text style={styles.dateSubText}>
+          {formatFriendlyDate(selectedDate)}
+        </Text>
+      )}
+      
+      {/* ✅ Cute subtitle */}
+      <Text style={styles.subtitle}>{subtitle}</Text>
 
       {/* Emoji */}
       <Animated.View
@@ -238,11 +297,6 @@ export function DayCalendar({
           {moodToEmoji[same.mood]} {same.streak}-day {same.mood} streak
         </Text>
       )}
-
-      {/* Prompt / confirmation */}
-      <Text style={styles.subtitle}>
-        {entry ? "Nice — mood saved." : getDailyPrompt(selectedDate)}
-      </Text>
 
       {/* TAGS (only after mood exists) */}
       {entry ? (

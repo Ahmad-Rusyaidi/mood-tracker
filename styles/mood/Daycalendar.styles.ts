@@ -140,4 +140,11 @@ export const dayCalendarStyles = StyleSheet.create({
     opacity: 0.5,
     textAlign: "right",
   },
+
+  dateSubText: {
+    fontSize: 12,
+    opacity: 0.55,
+    marginTop: -6,
+  },
+
 });

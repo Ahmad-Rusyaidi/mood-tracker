@@ -69,7 +69,9 @@ export const styles = StyleSheet.create({
   // Calendar area
   calendarArea: {
     flex: 1,
-    justifyContent: "center",
+    justifyContent: "flex-start",
+    alignItems: "center",
+    paddingTop: 10,
   },
 
   // Bottom section
