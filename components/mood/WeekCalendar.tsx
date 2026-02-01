@@ -1,5 +1,4 @@
 import type { MoodEntry } from "@/types";
-import { getWeekSummary } from "@/utils/moodStats";
 import { moodToEmoji } from "@/utils/moodUi";
 import React, { useMemo } from "react";
 import { Pressable, Text, View } from "react-native";
@@ -39,20 +38,9 @@ export function WeekCalendar({
       return { date: iso, label: d.toLocaleString(undefined, { weekday: "short" }), day: d.getDate() };
     });
   }, [anchorDate]);
-  const summary = getWeekSummary(entriesMap, anchorDate);
 
   return (
-    <View style={{ flexDirection: "column", justifyContent: "space-between", gap: 8 }}>
-      <View style={{ flexDirection: "row", gap: 12, justifyContent: "center", marginTop: 12 }}>
-        {Object.entries(summary).map(([mood, count]) =>
-          count > 0 ? (
-            <Text key={mood} style={{ fontSize: 14, fontWeight: "700" }}>
-              {moodToEmoji[mood as keyof typeof moodToEmoji]} {count}
-            </Text>
-          ) : null
-        )}
-      </View>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
+    <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
         {days.map((d) => {
           const entry = entriesMap[d.date];
           const isSelected = d.date === selectedDate;
@@ -77,7 +65,6 @@ export function WeekCalendar({
             </Pressable>
           );
         })}
-      </View>
     </View>
   );
 }

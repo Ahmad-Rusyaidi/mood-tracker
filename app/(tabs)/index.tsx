@@ -27,7 +27,7 @@ export default function HomeScreen() {
   const [selectedDate, setSelectedDate] = useState(toISODateLocal(today));
   const [viewMode, setViewMode] = useState<ViewMode>("month");
 
-  const { map, getByDate, setMoodForDate, refresh } = useMoodEntries();
+  const { map, getByDate, setMoodForDate, setTagsForDate, setNoteForDate, refresh } = useMoodEntries();
   const selectedEntry = getByDate(selectedDate);
 
   useEffect(() => {
@@ -138,8 +138,11 @@ export default function HomeScreen() {
             selectedDate={selectedDate}
             entry={selectedEntry}
             onChangeMood={(mood) => void setMoodForDate(selectedDate, mood)}
+            onChangeTags={(tags) => void setTagsForDate(selectedDate, tags)}
+            onChangeNote={(note) => void setNoteForDate(selectedDate, note)}
             entriesMap={map}
           />
+
         )}
       </View>
 

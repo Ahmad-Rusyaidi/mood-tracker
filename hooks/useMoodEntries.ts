@@ -34,6 +34,18 @@ export function useMoodEntries() {
     return entry;
   }, []);
 
+  const setTagsForDate = useCallback(async (date: string, tags: string[]) => {
+    const entry = await moodStorage.setTagsForDate(date, tags);
+    setMap((prev) => ({ ...prev, [date]: entry }));
+    return entry;
+  }, []);
+
+  const setNoteForDate = useCallback(async (date: string, note: string) => {
+    const entry = await moodStorage.setNoteForDate(date, note);
+    setMap((prev) => ({ ...prev, [date]: entry }));
+    return entry;
+  }, []);
+
   const removeByDate = useCallback(async (date: string) => {
     await moodStorage.removeByDate(date);
     setMap((prev) => {
@@ -49,19 +61,19 @@ export function useMoodEntries() {
   }, [map]);
 
   const getByDate = useCallback(
-    (date: string) => {
-      return map[date] ?? null;
-    },
+    (date: string) => map[date] ?? null,
     [map]
   );
 
   return {
     isLoading,
-    entries, // array view (newest first)
-    map,     // map view (fast lookup)
+    entries,
+    map,
     refresh,
     getByDate,
     setMoodForDate,
+    setTagsForDate,
+    setNoteForDate,
     removeByDate,
   };
 }

@@ -8,6 +8,7 @@ import {
   startOfMonth,
   toISODateLocal,
 } from "@/utils";
+import { getMonthSummary } from "@/utils/moodStats";
 import { moodToEmoji } from "@/utils/moodUi";
 import React, { useMemo } from "react";
 import { Pressable, Text, View } from "react-native";
@@ -61,6 +62,8 @@ export function MonthCalendar({
     return cells;
   }, [month]);
 
+  const summary = useMemo(() => getMonthSummary(entriesMap, month), [entriesMap, month]);
+
   return (
     <View style={styles.wrap}>
       {/* Month header */}
@@ -85,6 +88,17 @@ export function MonthCalendar({
           <Text style={styles.navText}>›</Text>
         </Pressable>
       </View>
+
+      <View style={{ flexDirection: "row", gap: 12, justifyContent: "center", marginBottom: 10 }}>
+        {Object.entries(summary).map(([mood, count]) =>
+          count > 0 ? (
+            <Text key={mood} style={{ fontSize: 14, fontWeight: "700" }}>
+              {moodToEmoji[mood as keyof typeof moodToEmoji]} {count}
+            </Text>
+          ) : null
+        )}
+      </View>
+
 
       {/* Day of week */}
       <View style={[styles.dowRow, { gap }]}>

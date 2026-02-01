@@ -1,3 +1,4 @@
+//src/storage/moodStorage.ts
 import type { Mood, MoodEntry } from "@/types";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { safeJsonParse, toJson } from "./json";
@@ -54,4 +55,35 @@ export const moodStorage = {
   async clearAll(): Promise<void> {
     await AsyncStorage.removeItem(StorageKeys.moodEntries);
   },
+
+  async setNoteForDate(date: string, note: string): Promise<MoodEntry> {
+    const map = await readMap();
+    const existing = map[date];
+
+    const entry: MoodEntry = existing
+      ? { ...existing, note, updatedAt: now() }
+      : { date, mood: "neutral", note, createdAt: now(), updatedAt: now() };
+
+    map[date] = entry;
+    await writeMap(map);
+    return entry;
+  },
+
+  async setTagsForDate(date: string, tags: string[]): Promise<MoodEntry> {
+    const map = await readMap();
+    const existing = map[date];
+
+    const cleaned = Array.from(
+      new Set(tags.map(t => t.trim()).filter(Boolean))
+    );
+
+    const entry: MoodEntry = existing
+      ? { ...existing, tags: cleaned, updatedAt: now() }
+      : { date, mood: "neutral", tags: cleaned, createdAt: now(), updatedAt: now() };
+
+    map[date] = entry;
+    await writeMap(map);
+    return entry;
+  },
+
 };

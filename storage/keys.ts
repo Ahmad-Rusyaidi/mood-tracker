@@ -1,3 +1,4 @@
+//src/storage/keys.ts
 export const StorageKeys = {
   moodEntries: "mood_entries_v1",
 } as const;

@@ -1,10 +1,36 @@
+//src/utils/moodStats.ts
 import type { Mood, MoodEntry } from "@/types";
 
-function toLocalISODate(d: Date) {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
+type MoodKey = MoodEntry["mood"];
+export type MoodSummary = Record<string, number>;
+
+function toISODateLocal(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return `${y}-${m}-${day}`;
+}
+
+export function getMonthSummary(
+  entriesMap: Record<string, MoodEntry>,
+  month: Date
+): MoodSummary {
+  const y = month.getFullYear();
+  const m = month.getMonth();
+  const lastDay = new Date(y, m + 1, 0).getDate();
+
+  const summary: Record<string, number> = {};
+
+  for (let day = 1; day <= lastDay; day++) {
+    const iso = toISODateLocal(new Date(y, m, day));
+    const entry = entriesMap[iso];
+    if (!entry) continue;
+
+    const mood = entry.mood as MoodKey;
+    summary[mood] = (summary[mood] ?? 0) + 1;
+  }
+
+  return summary;
 }
 
 export function getWeekSummary(
@@ -25,7 +51,7 @@ export function getWeekSummary(
   for (let i = 0; i < 7; i++) {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
-    const key = toLocalISODate(d);
+    const key = toISODateLocal(d);
 
     const entry = entriesMap[key];
     if (entry) result[entry.mood] += 1;
@@ -42,7 +68,7 @@ export function getMoodStreak(
   let cursor = new Date(today);
 
   while (true) {
-    const key = toLocalISODate(cursor);
+    const key = toISODateLocal(cursor);
     if (!entriesMap[key]) break;
 
     streak += 1;

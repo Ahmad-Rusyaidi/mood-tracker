@@ -1,3 +1,4 @@
+//src/types/mood.ts
 export const MOODS = ["happy", "sad", "angry", "neutral", "anxious"] as const;
 
 export type Mood = (typeof MOODS)[number];
@@ -8,6 +9,11 @@ export type MoodEntry = {
   mood: Mood;
   createdAt: number; // epoch ms
   updatedAt: number; // epoch ms
+
+  // NEW
+  tags?: string[];   // e.g. ["work","sleep","exercise"]
+  note?: string;     // short journal
 };
+
 
 export type CalendarViewMode = "day" | "week" | "month";
