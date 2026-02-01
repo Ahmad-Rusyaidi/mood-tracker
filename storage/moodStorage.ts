@@ -1,4 +1,4 @@
-//src/storage/moodStorage.ts
+// storage/moodStorage.ts
 import type { Mood, MoodEntry } from "@/types";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { safeJsonParse, toJson } from "./json";

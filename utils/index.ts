@@ -1,3 +1,3 @@
-//src/utils/index.ts
+// utils/index.ts
 export * from "./date";
 

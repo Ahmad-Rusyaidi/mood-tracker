@@ -1,4 +1,4 @@
-// src/components/mood/MonthFilters.tsx
+// components/mood/MonthFilters.tsx
 import type { Mood, MoodEntry } from "@/types";
 import { toISODateLocal } from "@/utils";
 import { moodToEmoji } from "@/utils/moodUi";

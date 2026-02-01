@@ -1,4 +1,4 @@
-//src/utils/moodUi.ts
+// utils/moodUi.ts
 import type { Mood } from "@/types";
 
 export const moodToEmoji: Record<Mood, string> = {

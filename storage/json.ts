@@ -1,4 +1,4 @@
-//src/storage/json.ts
+//storage/json.ts
 export function safeJsonParse<T>(value: string | null): T | null {
   if (!value) return null;
   try {

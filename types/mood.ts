@@ -1,4 +1,4 @@
-//src/types/mood.ts
+// types/mood.ts
 export const MOODS = ["happy", "sad", "angry", "neutral", "anxious"] as const;
 
 export type Mood = (typeof MOODS)[number];

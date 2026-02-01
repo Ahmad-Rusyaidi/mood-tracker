@@ -1,4 +1,4 @@
-//src/utils/moodStats.ts
+// utils/moodStats.ts
 import type { Mood, MoodEntry } from "@/types";
 
 type MoodKey = MoodEntry["mood"];

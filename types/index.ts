@@ -1,3 +1,3 @@
-//src/types/index.ts
+// types/index.ts
 export * from "./mood";
 

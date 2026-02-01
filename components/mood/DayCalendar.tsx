@@ -1,3 +1,4 @@
+// components/mood/DayCalendar.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -55,7 +56,6 @@ function diffDaysFromToday(iso: string) {
 
 function formatFriendlyDate(iso: string) {
   const dt = parseISODate(iso);
-  // e.g. "Sat, 7 Feb 2026"
   return dt.toLocaleDateString(undefined, {
     weekday: "short",
     day: "numeric",
@@ -64,39 +64,79 @@ function formatFriendlyDate(iso: string) {
   });
 }
 
+type HeaderKind = "today" | "yesterday" | "tomorrow" | "date";
+
+function isLateNightNow() {
+  // Local time
+  const now = new Date();
+  return now.getHours() >= 22; // 10pm+
+}
+
+// 🌈 Accent colors per kind (keep simple + cute)
+const ACCENT: Record<HeaderKind, string> = {
+  today: "#7C3AED",     // purple
+  yesterday: "#2563EB", // blue
+  tomorrow: "#10B981",  // green
+  date: "#111827",      // neutral text
+};
+
 // ✅ Only special titles for yesterday/today/tomorrow.
-// Otherwise: show date as title.
+// Today after 10pm -> "Late night check-in"
 function getHeaderInfo(iso: string) {
   const diff = diffDaysFromToday(iso);
 
-  if (diff === 0)
-    return { title: "Today’s vibe", showDate: true };
-  if (diff === -1)
-    return { title: "Yesterday recap", showDate: true };
-  if (diff === 1)
-    return { title: "Tomorrow preview", showDate: true };
+  if (diff === 0) {
+    const late = isLateNightNow();
+    return {
+      kind: "today" as const,
+      title: late ? "Late night check-in" : "Today’s vibe",
+      showDate: true,
+      accent: ACCENT.today,
+    };
+  }
 
-  // fallback: date only
-  return { title: formatFriendlyDate(iso), showDate: false };
+  if (diff === -1) {
+    return {
+      kind: "yesterday" as const,
+      title: "Yesterday recap",
+      showDate: true,
+      accent: ACCENT.yesterday,
+    };
+  }
+
+  if (diff === 1) {
+    return {
+      kind: "tomorrow" as const,
+      title: "Tomorrow preview",
+      showDate: true,
+      accent: ACCENT.tomorrow,
+    };
+  }
+
+  return {
+    kind: "date" as const,
+    title: formatFriendlyDate(iso),
+    showDate: false,
+    accent: ACCENT.date,
+  };
 }
 
-
-// ✅ Cute subtitle variants
+// ✅ Cute subtitle variants (also respects late-night)
 function getCuteSubtitle(iso: string, hasEntry: boolean) {
   const diff = diffDaysFromToday(iso);
 
   if (hasEntry) {
-    if (diff === 0) return "Cute — mood locked in ✨";
+    if (diff === 0) return isLateNightNow() ? "Proud of you for checking in 🌙✨" : "Cute — mood locked in ✨";
     if (diff === -1) return "A tiny recap moment 🧸";
     if (diff === 1) return "Planning ahead? love that for you 💫";
-    return "Your vibe for " + formatFriendlyDate(iso);
+    return `Your vibe for ${formatFriendlyDate(iso)} ✨`;
   }
 
   // no entry yet
-  if (diff === 0) return "How’s your heart today? 💖";
+  if (diff === 0) return isLateNightNow() ? "How was your day… really? 🌙🫶" : "How’s your heart today? 💖";
   if (diff === -1) return "What was the vibe yesterday? 🫶";
   if (diff === 1) return "What vibe do you want tomorrow? 🌙";
-  return getDailyPrompt(iso); // keep your existing prompt for other days
+  return getDailyPrompt(iso);
 }
 
 export function DayCalendar({
@@ -256,14 +296,15 @@ export function DayCalendar({
         </View>
       )}
 
-      {/* ✅ Header */}
-      <Text style={styles.dateText}>{headerInfo.title}</Text>
+      {/* ✅ Header (with accent color) */}
+      <Text style={[styles.dateText, { color: headerInfo.accent }]}>
+        {headerInfo.title}
+      </Text>
+
       {headerInfo.showDate && (
-        <Text style={styles.dateSubText}>
-          {formatFriendlyDate(selectedDate)}
-        </Text>
+        <Text style={styles.dateSubText}>{formatFriendlyDate(selectedDate)}</Text>
       )}
-      
+
       {/* ✅ Cute subtitle */}
       <Text style={styles.subtitle}>{subtitle}</Text>
 
@@ -287,9 +328,7 @@ export function DayCalendar({
       </Animated.View>
 
       {/* Logging streak */}
-      {streak >= 3 && (
-        <Text style={styles.streakText}>🔥 {streak}-day streak</Text>
-      )}
+      {streak >= 3 && <Text style={styles.streakText}>🔥 {streak}-day streak</Text>}
 
       {/* Same mood streak */}
       {same.streak >= 3 && same.mood && (
