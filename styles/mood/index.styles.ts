@@ -9,36 +9,59 @@ export const styles = StyleSheet.create({
     paddingTop: spacing.sm,
   },
 
-  // Toggle pills
+  // Toggle wrapper + sliding indicator
+  toggleWrapper: {
+    position: "relative",
+    marginBottom: 12,
+  },
+
+  toggleIndicator: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    borderRadius: 999,
+    backgroundColor: colors.primary ?? "#C9D7FF",
+    borderWidth: 1,
+    borderColor: "#AFC2FF",
+  },
+
+  // Toggle pills row
   toggleRow: {
     flexDirection: "row",
     gap: 10,
-    marginBottom: 12,
   },
+
   togglePill: {
-  width: 90,
-  paddingVertical: 8,
-  borderRadius: 999,
-  borderWidth: 1,
-  alignItems: "center",
-  justifyContent: "center",
-},
-  togglePillActive: {
-    backgroundColor: colors.primary ?? "#C9D7FF",
-    borderColor: "#AFC2FF",
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
+
+  // Active pill becomes transparent so indicator shows through
+  togglePillActive: {
+    backgroundColor: "transparent",
+    borderColor: "transparent",
+  },
+
   togglePillInactive: {
     backgroundColor: colors.card ?? "#FFFFFF",
     borderColor: colors.border,
   },
+
   toggleText: {
     fontWeight: "800",
     fontSize: 13,
     letterSpacing: 0.3,
+    textAlign: "center",
   },
+
   toggleTextActive: {
     color: colors.text,
   },
+
   toggleTextInactive: {
     color: colors.text,
   },
@@ -54,34 +77,15 @@ export const styles = StyleSheet.create({
     paddingBottom: spacing.md,
     gap: spacing.sm,
   },
+
   dateText: {
     fontSize: 18,
     fontWeight: "800",
     color: colors.text,
   },
+
   hint: {
     ...typography.caption,
     color: colors.mutedText,
-  },
-
-  // Summary (day/week when saved)
-  summary: {
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: 10,
-  },
-  bigEmoji: {
-    fontSize: 72,
-  },
-  savedText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: colors.mutedText,
-  },
-  changeLink: {
-    marginTop: 6,
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#4F46E5",
   },
 });

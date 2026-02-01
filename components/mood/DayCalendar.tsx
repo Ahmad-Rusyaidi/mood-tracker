@@ -1,27 +1,35 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Dimensions, Pressable, Text, View } from "react-native";
 
-import { moodSparkleColors } from "@/utils/moodSparkle";
 import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
 import ConfettiCannon from "react-native-confetti-cannon";
 
 import { MoodPicker } from "@/components/mood";
 import type { Mood, MoodEntry } from "@/types";
+import { getDailyPrompt } from "@/utils/moodPrompts";
+import { moodSparkleColors } from "@/utils/moodSparkle";
+import { getMoodStreak } from "@/utils/moodStats";
 import { moodToEmoji } from "@/utils/moodUi";
+
 import { dayCalendarStyles as styles } from "../../styles/mood/Daycalendar.styles";
 
 type Props = {
   selectedDate: string;
   entry: MoodEntry | null;
   onChangeMood: (mood: Mood) => void;
+  entriesMap: Record<string, MoodEntry>;
 };
 
-export function DayCalendar({ selectedDate, entry, onChangeMood }: Props) {
+export function DayCalendar({
+  selectedDate,
+  entry,
+  onChangeMood,
+  entriesMap,
+}: Props) {
   const [isEditing, setIsEditing] = useState(!entry);
   const [showConfetti, setShowConfetti] = useState(false);
   const { width, height } = Dimensions.get("window");
-
 
   // Animations
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -85,7 +93,7 @@ export function DayCalendar({ selectedDate, entry, onChangeMood }: Props) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
       await soundRef.current?.replayAsync();
-    } catch { }
+    } catch {}
   };
 
   const handlePick = async (mood: Mood) => {
@@ -106,6 +114,9 @@ export function DayCalendar({ selectedDate, entry, onChangeMood }: Props) {
 
   const emoji = entry ? moodToEmoji[entry.mood] : "🙂";
 
+  // 🔥 FEATURE 2: mood streak
+  const streak = getMoodStreak(entriesMap, selectedDate);
+
   const glow = glowAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ["rgba(99,102,241,0)", "rgba(99,102,241,0.35)"],
@@ -113,6 +124,7 @@ export function DayCalendar({ selectedDate, entry, onChangeMood }: Props) {
 
   return (
     <View style={styles.container}>
+      {/* Sparkle */}
       {showConfetti && (
         <View
           pointerEvents="none"
@@ -126,10 +138,10 @@ export function DayCalendar({ selectedDate, entry, onChangeMood }: Props) {
           }}
         >
           <ConfettiCannon
-            count={50}                      // 👈 small = sparkle
-            origin={{ x: -40, y: height - 500 }}
-            explosionSpeed={140}            // 👈 tight burst
-            fallSpeed={3600}                // 👈 quick fade
+            count={50}
+            origin={{ x: -500, y: height - 500 }}
+            explosionSpeed={140}
+            fallSpeed={3600}
             fadeOut
             colors={moodSparkleColors[entry?.mood ?? "neutral"]}
           />
@@ -138,6 +150,7 @@ export function DayCalendar({ selectedDate, entry, onChangeMood }: Props) {
 
       <Text style={styles.dateText}>{selectedDate}</Text>
 
+      {/* Emoji */}
       <Animated.View
         style={[
           {
@@ -146,9 +159,7 @@ export function DayCalendar({ selectedDate, entry, onChangeMood }: Props) {
             shadowOffset: { width: 0, height: 0 },
             backgroundColor: "transparent",
           },
-          {
-            shadowColor: glow, // 👈 animated value goes here
-          },
+          { shadowColor: glow },
         ]}
       >
         <Animated.Text
@@ -161,20 +172,42 @@ export function DayCalendar({ selectedDate, entry, onChangeMood }: Props) {
         </Animated.Text>
       </Animated.View>
 
+      {/* 🔥 Streak */}
+      {streak >= 3 && (
+        <Text
+          style={{
+            fontSize: 13,
+            fontWeight: "800",
+            color: "#F59E0B",
+            marginTop: 4,
+          }}
+        >
+          🔥 {streak}-day streak
+        </Text>
+      )}
+
+      {/* Prompt / confirmation */}
       <Text style={styles.subtitle}>
-        {entry ? "Nice — mood saved." : "How are you feeling today?"}
+        {entry ? "Nice — mood saved." : getDailyPrompt(selectedDate)}
       </Text>
 
+      {/* Picker */}
       {isEditing ? (
         <Animated.View style={{ opacity: cardOpacity }}>
           <View style={styles.pickerWrap}>
             <View style={styles.pickerCard}>
-              <MoodPicker value={entry?.mood ?? null} onChange={handlePick} />
+              <MoodPicker
+                value={entry?.mood ?? null}
+                onChange={handlePick}
+              />
             </View>
           </View>
         </Animated.View>
       ) : (
-        <Pressable onPress={() => setIsEditing(true)} style={styles.changeBtn}>
+        <Pressable
+          onPress={() => setIsEditing(true)}
+          style={styles.changeBtn}
+        >
           <Text style={styles.changeBtnText}>Change mood</Text>
         </Pressable>
       )}
