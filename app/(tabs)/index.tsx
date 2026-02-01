@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { MonthCalendar, MoodPicker } from "@/components/mood";
+import { MonthCalendar } from "@/components/mood";
 import { DayCalendar } from "@/components/mood/DayCalendar";
 import { WeekCalendar } from "@/components/mood/WeekCalendar";
 import { useMoodEntries } from "@/hooks";
@@ -142,19 +142,6 @@ export default function HomeScreen() {
           />
         )}
       </View>
-
-      {/* Bottom section (not shown on day) */}
-      {viewMode !== "day" && (
-        <View style={styles.bottom}>
-          <Text style={styles.dateText}>{selectedDate}</Text>
-          <Text style={styles.hint}>Tap an emoji to save today’s mood.</Text>
-
-          <MoodPicker
-            value={selectedEntry?.mood ?? null}
-            onChange={(mood) => void setMoodForDate(selectedDate, mood)}
-          />
-        </View>
-      )}
 
       {/* Dev reset */}
       {__DEV__ && (

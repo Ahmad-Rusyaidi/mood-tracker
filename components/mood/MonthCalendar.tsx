@@ -40,6 +40,7 @@ export function MonthCalendar({
   size = "normal",
 }: Props) {
   const cell = CELL[size];
+  const gap = size === "large" ? 10 : 6;
 
   const grid = useMemo(() => {
     const first = startOfMonth(month);
@@ -48,16 +49,13 @@ export function MonthCalendar({
 
     const cells: Array<{ date: string | null; day: number | null }> = [];
 
-    // leading blanks
     for (let i = 0; i < offset; i++) cells.push({ date: null, day: null });
 
-    // days
     for (let day = 1; day <= total; day++) {
       const d = new Date(month.getFullYear(), month.getMonth(), day);
       cells.push({ date: toISODateLocal(d), day });
     }
 
-    // trailing blanks to fill last row
     while (cells.length % 7 !== 0) cells.push({ date: null, day: null });
 
     return cells;
@@ -89,7 +87,7 @@ export function MonthCalendar({
       </View>
 
       {/* Day of week */}
-      <View style={styles.dowRow}>
+      <View style={[styles.dowRow, { gap }]}>
         {DOW.map((d, i) => (
           <Text key={`${d}-${i}`} style={[styles.dowText, { width: cell.w }]}>
             {d}
@@ -98,9 +96,8 @@ export function MonthCalendar({
       </View>
 
       {/* Grid */}
-      <View style={[styles.grid, { gap: size === "large" ? 10 : 6 }]}>
+      <View style={[styles.grid, { gap }]}>
         {grid.map((cellData, idx) => {
-          // blank cell
           if (!cellData.date || !cellData.day) {
             return (
               <View
@@ -110,33 +107,37 @@ export function MonthCalendar({
             );
           }
 
-          const isSelected = cellData.date === selectedDate;
-          const entry = entriesMap[cellData.date];
+          const date = cellData.date;
+          const day = cellData.day;
+
+          const isSelected = date === selectedDate;
+          const entry = entriesMap[date];
           const hasEntry = !!entry;
 
           return (
             <Pressable
-              key={cellData.date}
-              onPress={() => onSelectDate(cellData.date!)}
+              key={date}
+              onPress={() => onSelectDate(date)}
               style={[
-                styles.dayCell,
+                styles.dayBase,
                 { width: cell.w, height: cell.h },
-                isSelected && styles.daySelected,
+                hasEntry ? styles.dayWithMood : styles.dayEmpty,
+                isSelected && (hasEntry ? styles.dayWithMoodSelected : styles.daySelected),
               ]}
               accessibilityRole="button"
-              accessibilityLabel={`Select ${cellData.date}`}
+              accessibilityLabel={`Select ${date}`}
             >
-              <Text style={[styles.dayText, isSelected && styles.dayTextSelected]}>
-                {cellData.day}
+              {/* Day number pinned top-left */}
+              <Text style={[styles.dayNum, isSelected && styles.dayNumSelected]}>
+                {day}
               </Text>
 
+              {/* Content */}
               {hasEntry ? (
-                <Text style={styles.moodEmoji}>{moodToEmoji[entry!.mood]}</Text>
-              ) : (
-                <View style={styles.dotPlaceholder} />
-              )}
-
-
+                <Text style={styles.moodEmojiBig}>
+                  {moodToEmoji[entry!.mood]}
+                </Text>
+              ) : null}
             </Pressable>
           );
         })}

@@ -10,12 +10,10 @@ export const styles = StyleSheet.create({
         backgroundColor: colors.card ?? colors.background,
         alignSelf: "center",
 
-        // iOS shadow
         shadowColor: "#000",
         shadowOpacity: 0.08,
         shadowRadius: 18,
         shadowOffset: { width: 0, height: 8 },
-        // Android shadow
         elevation: 4,
     },
 
@@ -44,7 +42,7 @@ export const styles = StyleSheet.create({
 
     dowRow: {
         flexDirection: "row",
-        justifyContent: "space-between",
+        justifyContent: "center",
         marginBottom: spacing.md,
         paddingHorizontal: 2,
     },
@@ -61,45 +59,56 @@ export const styles = StyleSheet.create({
         justifyContent: "center",
     },
 
-    dayCell: {
+    /** Base cell */
+    dayBase: {
         borderRadius: 16,
-        backgroundColor: "#F4F6FF", // pastel tile
         alignItems: "center",
         justifyContent: "center",
+        position: "relative", // 👈 for day number top-left
     },
 
+    /** Empty day keeps the tile */
+    dayEmpty: {
+        backgroundColor: "#F4F6FF",
+    },
+
+    /** Day with mood: NO tile background */
+    dayWithMood: {
+        backgroundColor: "transparent",
+    },
+
+    /** Selected empty day = your existing selected tile look */
     daySelected: {
         backgroundColor: colors.primary ?? "#C9D7FF",
         borderWidth: 1,
         borderColor: "#AFC2FF",
     },
 
-    dayText: {
-        color: colors.text,
-        fontSize: 14,
-        fontWeight: "800",
-    },
-    dayTextSelected: {
-        color: colors.text,
-    },
-
-    dot: {
-        marginTop: 6,
-        width: 7,
-        height: 7,
-        borderRadius: 999,
-        backgroundColor: "#111827",
-    },
-    dotPlaceholder: {
-        marginTop: 6,
-        width: 7,
-        height: 7,
-        borderRadius: 999,
+    /** Selected mood day = ring only (no filled tile) */
+    dayWithMoodSelected: {
+        borderWidth: 2,
+        borderColor: "#AFC2FF",
         backgroundColor: "transparent",
     },
-    moodEmoji: {
-        marginTop: 4,
-        fontSize: 18, // tweak based on your cell size
+
+    /** Day number pinned top-left */
+    dayNum: {
+        position: "absolute",
+        top: 6,
+        left: 7,
+        color: colors.text,
+        fontSize: 9,
+        fontWeight: "700",
+        opacity: 0.75,
+    },
+    dayNumSelected: {
+        color: colors.text,
+        opacity: 0.9,
     },
 
+    /** Big emoji centered (whole emoji day) */
+    moodEmojiBig: {
+        fontSize: 28,
+        marginTop: 12, // gives space so it doesn't collide with day number
+    },
 });
