@@ -1,3 +1,4 @@
+//app/(tabs)/index.tsx
 import { styles } from "@/styles/mood/index.styles";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {

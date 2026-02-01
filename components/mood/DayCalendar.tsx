@@ -1,15 +1,23 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Dimensions, Pressable, Text, TextInput, View } from "react-native";
+import {
+  Animated,
+  Dimensions,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
 import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
 import ConfettiCannon from "react-native-confetti-cannon";
 
 import { MoodPicker } from "@/components/mood";
+import { TagChip } from "@/components/mood/TagChip";
 import type { Mood, MoodEntry } from "@/types";
 import { getDailyPrompt } from "@/utils/moodPrompts";
 import { moodSparkleColors } from "@/utils/moodSparkle";
-import { getMoodStreak } from "@/utils/moodStats";
+import { getMoodStreak, getSameMoodStreak } from "@/utils/moodStats";
 import { moodToEmoji } from "@/utils/moodUi";
 
 import { dayCalendarStyles as styles } from "../../styles/mood/Daycalendar.styles";
@@ -28,40 +36,6 @@ type TagPreset = (typeof TAG_PRESETS)[number];
 
 function uniqClean(tags: string[]) {
   return Array.from(new Set(tags.map((t) => t.trim()).filter(Boolean)));
-}
-
-function TagChip({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={{
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 999,
-        backgroundColor: active ? "#111827" : "#EEF2FF",
-        borderWidth: 1,
-        borderColor: active ? "#111827" : "#CBD5E1",
-      }}
-    >
-      <Text
-        style={{
-          fontWeight: "800",
-          fontSize: 12,
-          color: active ? "white" : "#111827",
-        }}
-      >
-        #{label}
-      </Text>
-    </Pressable>
-  );
 }
 
 export function DayCalendar({
@@ -83,29 +57,32 @@ export function DayCalendar({
 
   // Sound
   const soundRef = useRef<Audio.Sound | null>(null);
+
+  // Note draft
   const [noteDraft, setNoteDraft] = useState(entry?.note ?? "");
 
+  // Keep draft in sync when switching dates / entries change
   useEffect(() => {
     setNoteDraft(entry?.note ?? "");
   }, [entry?.updatedAt]);
 
+  // Auto-save note (only after mood exists)
   useEffect(() => {
-    if (!entry) return; // mood must exist first (same UX rule as tags)
+    if (!entry) return;
 
     const id = setTimeout(() => {
-      // avoid writing if unchanged
       if ((entry.note ?? "") === noteDraft) return;
       onChangeNote(noteDraft);
     }, 450);
 
     return () => clearTimeout(id);
-  }, [noteDraft, entry?.updatedAt]);
+  }, [noteDraft, entry?.updatedAt, entry, onChangeNote]);
 
-
+  // Reset editing state when changing date / entry updates
   useEffect(() => {
     setIsEditing(!entry);
     cardOpacity.setValue(1);
-  }, [selectedDate, entry?.updatedAt]);
+  }, [selectedDate, entry?.updatedAt, cardOpacity, entry]);
 
   // Load sound once
   useEffect(() => {
@@ -156,7 +133,7 @@ export function DayCalendar({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
       await soundRef.current?.replayAsync();
-    } catch { }
+    } catch {}
   };
 
   const handlePick = async (mood: Mood) => {
@@ -167,7 +144,7 @@ export function DayCalendar({
 
     animateEmoji();
     fadeCardOut();
-    playFeedback();
+    void playFeedback();
 
     if (isFirstEver) {
       setShowConfetti(true);
@@ -177,8 +154,9 @@ export function DayCalendar({
 
   const emoji = entry ? moodToEmoji[entry.mood] : "🙂";
 
-  // mood streak
+  // Streaks
   const streak = getMoodStreak(entriesMap, selectedDate);
+  const same = getSameMoodStreak(entriesMap, selectedDate);
 
   const glow = glowAnim.interpolate({
     inputRange: [0, 1],
@@ -188,6 +166,9 @@ export function DayCalendar({
   const selectedTags = useMemo(() => entry?.tags ?? [], [entry?.tags]);
 
   const toggleTag = async (tag: TagPreset) => {
+    // ✅ must choose mood first
+    if (!entry) return;
+
     const current = selectedTags;
     const next = current.includes(tag)
       ? current.filter((t) => t !== tag)
@@ -195,8 +176,8 @@ export function DayCalendar({
 
     try {
       onChangeTags(uniqClean(next));
-      Haptics.selectionAsync();
-    } catch { }
+      void Haptics.selectionAsync();
+    } catch {}
   };
 
   return (
@@ -246,17 +227,15 @@ export function DayCalendar({
         </Animated.Text>
       </Animated.View>
 
-      {/* Streak */}
+      {/* Logging streak */}
       {streak >= 3 && (
-        <Text
-          style={{
-            fontSize: 13,
-            fontWeight: "800",
-            color: "#F59E0B",
-            marginTop: 4,
-          }}
-        >
-          🔥 {streak}-day streak
+        <Text style={styles.streakText}>🔥 {streak}-day streak</Text>
+      )}
+
+      {/* Same mood streak */}
+      {same.streak >= 3 && same.mood && (
+        <Text style={styles.sameMoodStreakText}>
+          {moodToEmoji[same.mood]} {same.streak}-day {same.mood} streak
         </Text>
       )}
 
@@ -265,29 +244,12 @@ export function DayCalendar({
         {entry ? "Nice — mood saved." : getDailyPrompt(selectedDate)}
       </Text>
 
-      {/* TAGS */}
+      {/* TAGS (only after mood exists) */}
       {entry ? (
-        <View style={{ marginTop: 14, width: "100%" }}>
-          <Text
-            style={{
-              fontSize: 12,
-              fontWeight: "800",
-              opacity: 0.6,
-              textAlign: "center",
-            }}
-          >
-            TAGS
-          </Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>TAGS</Text>
 
-          <View
-            style={{
-              marginTop: 10,
-              flexDirection: "row",
-              flexWrap: "wrap",
-              justifyContent: "center",
-              gap: 10,
-            }}
-          >
+          <View style={styles.tagsWrap}>
             {TAG_PRESETS.map((tag) => (
               <TagChip
                 key={tag}
@@ -298,54 +260,26 @@ export function DayCalendar({
             ))}
           </View>
         </View>
-      ) : (
-        <View style={{ marginTop: 0 }}>
-          
-        </View>
-      )}
+      ) : null}
 
-      {/* NOTE */}
+      {/* NOTE (only after mood exists) */}
       {entry ? (
-        <View style={{ marginTop: 14, width: "100%" }}>
-          <Text
-            style={{
-              fontSize: 12,
-              fontWeight: "800",
-              opacity: 0.6,
-              textAlign: "center",
-            }}
-          >
-            NOTE
-          </Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>NOTE</Text>
 
-          <View style={{ marginTop: 10, paddingHorizontal: 16 }}>
+          <View style={styles.noteWrap}>
             <TextInput
               value={noteDraft}
               onChangeText={setNoteDraft}
               placeholder="Write a quick note…"
               placeholderTextColor="rgba(17,24,39,0.35)"
               multiline
-              style={{
-                minHeight: 50,
-                borderRadius: 14,
-                paddingHorizontal: 14,
-                paddingVertical: 12,
-                backgroundColor: "#F8FAFF",
-                borderWidth: 1,
-                borderColor: "#CBD5E1",
-                fontSize: 14,
-              }}
+              style={styles.noteInput}
             />
-            <Text style={{ marginTop: 6, fontSize: 11, opacity: 0.5, textAlign: "right" }}>
-              Auto-saved
-            </Text>
+            <Text style={styles.autosaveText}>Auto-saved</Text>
           </View>
         </View>
-      ) : (
-        <View style={{ marginTop: 0 }}>
-          
-        </View>
-      )}
+      ) : null}
 
       {/* Picker */}
       {isEditing ? (

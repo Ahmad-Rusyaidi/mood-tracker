@@ -77,3 +77,27 @@ export function getMoodStreak(
 
   return streak;
 }
+
+export function getSameMoodStreak(
+  entriesMap: Record<string, MoodEntry>,
+  today: string
+): { mood: Mood | null; streak: number } {
+  const first = entriesMap[today];
+  if (!first) return { mood: null, streak: 0 };
+
+  const target = first.mood;
+  let streak = 0;
+  let cursor = new Date(today);
+
+  while (true) {
+    const key = toISODateLocal(cursor);
+    const entry = entriesMap[key];
+    if (!entry) break;
+    if (entry.mood !== target) break;
+
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  return { mood: target, streak };
+}

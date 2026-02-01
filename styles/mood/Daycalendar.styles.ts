@@ -30,7 +30,6 @@ export const dayCalendarStyles = StyleSheet.create({
     marginTop: 6,
   },
 
-  // Optional: pastel "card" behind picker (looks less bland)
   pickerCard: {
     width: "100%",
     padding: spacing.md,
@@ -40,7 +39,7 @@ export const dayCalendarStyles = StyleSheet.create({
     borderColor: colors.border,
   },
 
-    changeBtn: {
+  changeBtn: {
     marginTop: 10,
     paddingVertical: 10,
     paddingHorizontal: 16,
@@ -56,4 +55,89 @@ export const dayCalendarStyles = StyleSheet.create({
     color: "#1F2937",
   },
 
+  /* 🔥 NEW BELOW */
+
+  streakText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#F59E0B",
+  },
+
+  sameMoodStreakText: {
+    fontSize: 13,
+    fontWeight: "800",
+    opacity: 0.9,
+  },
+
+  section: {
+    marginTop: 14,
+    width: "100%",
+  },
+
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: "800",
+    opacity: 0.6,
+    textAlign: "center",
+  },
+
+  tagsWrap: {
+    marginTop: 10,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 10,
+  },
+
+  tagChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+
+  tagChipActive: {
+    backgroundColor: "#111827",
+    borderColor: "#111827",
+  },
+
+  tagChipInactive: {
+    backgroundColor: "#EEF2FF",
+    borderColor: "#CBD5E1",
+  },
+
+  tagTextActive: {
+    color: "white",
+    fontWeight: "800",
+    fontSize: 12,
+  },
+
+  tagTextInactive: {
+    color: "#111827",
+    fontWeight: "800",
+    fontSize: 12,
+  },
+
+  noteWrap: {
+    marginTop: 10,
+    paddingHorizontal: spacing.md,
+  },
+
+  noteInput: {
+    minHeight: 50,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: "#F8FAFF",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    fontSize: 14,
+  },
+
+  autosaveText: {
+    marginTop: 6,
+    fontSize: 11,
+    opacity: 0.5,
+    textAlign: "right",
+  },
 });
