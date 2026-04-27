@@ -89,6 +89,38 @@ export const dayCalendarStyles = StyleSheet.create({
     gap: 10,
   },
 
+  customTagComposer: {
+    marginTop: 12,
+    paddingHorizontal: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+
+  customTagInput: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    backgroundColor: "#F8FAFF",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    fontSize: 14,
+  },
+
+  customTagButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderRadius: 999,
+    backgroundColor: "#111827",
+  },
+
+  customTagButtonText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+
   tagChip: {
     paddingHorizontal: 12,
     paddingVertical: 8,

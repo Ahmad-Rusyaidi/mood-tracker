@@ -116,7 +116,7 @@ function EntryCard({
   );
 }
 
-export default function HistoryScreen() {
+export default function JournalScreen() {
   const router = useRouter();
   const { entries, isLoading } = useMoodEntries();
   const [selectedMood, setSelectedMood] = useState<MoodFilter>("all");
@@ -156,21 +156,14 @@ export default function HistoryScreen() {
 
   const hasEntries = entries.length > 0;
   const hasFilters = selectedMood !== "all" || selectedMonth !== "all" || selectedTag !== "all";
+  const entryLabel = filteredEntries.length === 1 ? "entry" : "entries";
 
   const listHeader = (
     <View style={styles.headerWrap}>
-      <Text style={styles.title}>History</Text>
+      <Text style={styles.title}>Journal</Text>
       <Text style={styles.subtitle}>
-        Review past moods, notes, and tags to spot what has been shaping your days.
+        Browse your past check-ins, filter them, and reopen any day when you want to revisit it.
       </Text>
-
-      <View style={styles.summaryCard}>
-        <Text style={styles.summaryEyebrow}>Your entries</Text>
-        <Text style={styles.summaryValue}>{filteredEntries.length}</Text>
-        <Text style={styles.summaryHint}>
-          {hasFilters ? "matching current filters" : "total check-ins saved"}
-        </Text>
-      </View>
 
       <FilterSection title="Mood">
         <FilterChip label="All" active={selectedMood === "all"} onPress={() => setSelectedMood("all")} />
@@ -207,6 +200,11 @@ export default function HistoryScreen() {
           />
         ))}
       </FilterSection>
+
+      <Text style={styles.resultCount}>
+        {filteredEntries.length} {entryLabel}
+        {hasFilters ? " matching your filters" : " saved"}
+      </Text>
     </View>
   );
 
@@ -292,28 +290,10 @@ const styles = StyleSheet.create({
     color: colors.mutedText,
     lineHeight: 22,
   },
-  summaryCard: {
-    backgroundColor: "#EAF0FF",
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: "#C9D7FF",
-    gap: 4,
-  },
-  summaryEyebrow: {
+  resultCount: {
     ...typography.caption,
     color: colors.mutedText,
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-  },
-  summaryValue: {
-    fontSize: 34,
-    fontWeight: "800",
-    color: colors.text,
-  },
-  summaryHint: {
-    ...typography.caption,
-    color: colors.mutedText,
+    marginTop: -2,
   },
   filterSection: {
     gap: spacing.sm,

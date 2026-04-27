@@ -18,7 +18,7 @@ import {
   type MonthFiltersState,
 } from "@/components/mood/MonthFilters";
 import { WeekCalendar } from "@/components/mood/WeekCalendar";
-import { useMoodEntries } from "@/hooks";
+import { useAppSettings, useMoodEntries } from "@/hooks";
 import { moodStorage } from "@/storage";
 import { spacing } from "@/styles";
 import { toISODateLocal } from "@/utils";
@@ -50,6 +50,7 @@ export default function HomeScreen() {
 
   const { map, getByDate, setMoodForDate, setTagsForDate, setNoteForDate, refresh } =
     useMoodEntries();
+  const { settings, addCustomTag } = useAppSettings();
   const selectedEntry = getByDate(selectedDate);
 
   // Filters state
@@ -261,6 +262,8 @@ export default function HomeScreen() {
             onChangeTags={(tags) => void setTagsForDate(selectedDate, tags)}
             onChangeNote={(note) => void setNoteForDate(selectedDate, note)}
             entriesMap={map}
+            availableTags={settings.customTags}
+            onCreateCustomTag={(tag) => addCustomTag(tag)}
           />
         )}
       </View>

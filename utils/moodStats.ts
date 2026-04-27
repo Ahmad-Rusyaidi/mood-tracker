@@ -123,6 +123,17 @@ export function countLoggedDaysInWeek(
   }).length;
 }
 
+export function getEntriesForWeek(entries: MoodEntry[], anchorDate: Date): MoodEntry[] {
+  const start = startOfWeek(anchorDate);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+
+  return entries.filter((entry) => {
+    const date = parseISODateLocal(entry.date);
+    return date >= start && date <= end;
+  });
+}
+
 export function getMoodStreak(
   entriesMap: Record<string, MoodEntry>,
   today: string

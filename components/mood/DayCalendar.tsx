@@ -15,6 +15,7 @@ import ConfettiCannon from "react-native-confetti-cannon";
 
 import { MoodPicker } from "@/components/mood";
 import { TagChip } from "@/components/mood/TagChip";
+import { DEFAULT_TAGS } from "@/constants/tags";
 import type { Mood, MoodEntry } from "@/types";
 import { getDailyPrompt } from "@/utils/moodPrompts";
 import { moodSparkleColors } from "@/utils/moodSparkle";
@@ -30,10 +31,9 @@ type Props = {
   onChangeTags: (tags: string[]) => void;
   onChangeNote: (note: string) => void;
   entriesMap: Record<string, MoodEntry>;
+  availableTags: string[];
+  onCreateCustomTag: (tag: string) => Promise<unknown>;
 };
-
-const TAG_PRESETS = ["work", "sleep", "family", "friends", "exercise", "study"] as const;
-type TagPreset = (typeof TAG_PRESETS)[number];
 
 function uniqClean(tags: string[]) {
   return Array.from(new Set(tags.map((t) => t.trim()).filter(Boolean)));
@@ -146,9 +146,12 @@ export function DayCalendar({
   onChangeTags,
   onChangeNote,
   entriesMap,
+  availableTags,
+  onCreateCustomTag,
 }: Props) {
   const [isEditing, setIsEditing] = useState(!entry);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [customTagDraft, setCustomTagDraft] = useState("");
   const { width, height } = Dimensions.get("window");
 
   // Animations
@@ -248,8 +251,12 @@ export function DayCalendar({
   });
 
   const selectedTags = useMemo(() => entry?.tags ?? [], [entry?.tags]);
+  const allTags = useMemo(
+    () => uniqClean([...DEFAULT_TAGS, ...availableTags]),
+    [availableTags]
+  );
 
-  const toggleTag = async (tag: TagPreset) => {
+  const toggleTag = async (tag: string) => {
     // ✅ must choose mood first
     if (!entry) return;
 
@@ -261,6 +268,22 @@ export function DayCalendar({
     try {
       onChangeTags(uniqClean(next));
       void Haptics.selectionAsync();
+    } catch {}
+  };
+
+  const handleAddCustomTag = async () => {
+    if (!entry) return;
+
+    const nextTag = customTagDraft.trim().toLowerCase();
+    if (!nextTag) return;
+
+    try {
+      await onCreateCustomTag(nextTag);
+      if (!selectedTags.includes(nextTag)) {
+        onChangeTags(uniqClean([...selectedTags, nextTag]));
+      }
+      setCustomTagDraft("");
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {}
   };
 
@@ -344,7 +367,7 @@ export function DayCalendar({
           <Text style={styles.sectionTitle}>TAGS</Text>
 
           <View style={styles.tagsWrap}>
-            {TAG_PRESETS.map((tag) => (
+            {allTags.map((tag) => (
               <TagChip
                 key={tag}
                 label={tag}
@@ -352,6 +375,27 @@ export function DayCalendar({
                 onPress={() => void toggleTag(tag)}
               />
             ))}
+          </View>
+
+          <View style={styles.customTagComposer}>
+            <TextInput
+              value={customTagDraft}
+              onChangeText={setCustomTagDraft}
+              placeholder="Add custom tag"
+              placeholderTextColor="rgba(17,24,39,0.35)"
+              style={styles.customTagInput}
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="done"
+              onSubmitEditing={() => void handleAddCustomTag()}
+            />
+
+            <Pressable
+              onPress={() => void handleAddCustomTag()}
+              style={styles.customTagButton}
+            >
+              <Text style={styles.customTagButtonText}>Add tag</Text>
+            </Pressable>
           </View>
         </View>
       ) : null}

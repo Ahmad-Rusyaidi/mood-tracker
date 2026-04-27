@@ -96,15 +96,23 @@ The app already has a solid core and is beyond starter level in the main mood fl
 - single entry per date
 - notes
 - preset tags
+- custom tags
+- on-demand tag creation from Home during check-in
+- tag management in Settings with default tags and saved custom tags
 - day / week / month views
-- history timeline
-- history filters by mood, month, and tag
-- jump from history entry back to that day
+- journal timeline
+- journal filters by mood, month, and tag
+- jump from journal entry back to that day
 - insights tab
 - weekly and monthly mood summaries
 - current streak, longest streak, and most common mood insights
 - top tags and hard-day tag pattern summaries
 - weekday rhythm insights when enough data exists
+- settings tab
+- export data
+- clear all data
+- daily reminder preferences
+- scheduled daily reminders with Expo notifications
 - monthly filters
 - streaks
 - same-mood streaks
@@ -113,35 +121,42 @@ The app already has a solid core and is beyond starter level in the main mood fl
 
 ### Current Technical Shape
 
-- Expo Router app with Home, History, and Insights tabs
+- Expo Router app with Home, Journal, Insights, and Settings tabs
 - local-only persistence
 - one mood entry per `YYYY-MM-DD`
 - hardcoded mood set
-- hardcoded preset tag set
+- shared default tag list plus saved custom tags
 
 ### Not Yet Implemented
 
-- settings tab
-- custom tags
-- weekly recap
-- reminder notifications
 - sleep / energy / stress context
 - export / backup
 - privacy lock
 - multiple entries per day
 - cloud sync
 
-## Current Product Gaps
+## Product Structure
 
-The biggest gaps right now are not basic logging. They are:
+Each main area should do one job clearly:
 
-- weak reflection flow after logging
-- only one main tab / screen
-- no strong history experience
-- no trend or insight surface
-- no custom tracking beyond preset tags
-- no reminder or retention loop
-- no explicit privacy/export controls
+- `Home`: log today, use tags, and create a tag on demand while checking in
+- `Journal`: browse and reopen past entries
+- `Insights`: view trends, recaps, and pattern summaries
+- `Settings`: manage reminders, saved custom tags, export, and preferences
+
+This keeps reflection in one place instead of repeating it across multiple tabs.
+
+## Tag Behavior
+
+Tags now have two distinct roles in the app:
+
+- `Default tags`: always available everywhere, shown in Settings for visibility but not meant to be edited
+- `Custom tags`: can be created on Home during a check-in and are saved for reuse on future days
+
+The split is intentional:
+
+- `Home` is for fast, in-the-moment tagging
+- `Settings` is for tag management and saved tag visibility
 
 ## Product Pillars
 
@@ -162,7 +177,7 @@ The app should help connect moods to triggers, habits, and routines over time.
 These features best match the product direction:
 
 - fast daily check-in
-- history view
+- journal view
 - insights view
 - custom tags
 - weekly recap
@@ -198,7 +213,7 @@ These features best match the product direction:
 
 | Feature | Why users care | Product impact | Build difficulty | Priority |
 |---|---|---:|---:|---:|
-| `History timeline` | Lets users review past moods and notes in one place | High | Low-Medium | `P1` |
+| `Journal timeline` | Lets users review past moods and notes in one place | High | Low-Medium | `P1` |
 | `Insights tab` | Turns raw entries into trends and patterns | High | Medium | `P1` |
 | `Custom tags` | People want to track their own real triggers | High | Medium | `P1` |
 | `Weekly recap` | Gives users a simple reason to come back | High | Medium | `P1` |
@@ -213,7 +228,7 @@ These features best match the product direction:
 
 ## Recommended Build Order
 
-1. History timeline
+1. Journal timeline
 2. Insights tab
 3. Custom tags
 4. Weekly recap
@@ -225,7 +240,7 @@ These features best match the product direction:
 
 ## Why This Order
 
-- `History` is the easiest high-value feature and makes current data useful immediately.
+- `Journal` is the easiest high-value feature and makes current data useful immediately.
 - `Insights` turns logging into reflection.
 - `Custom tags` make the data personal.
 - `Weekly recap` creates payoff and return value.
@@ -234,11 +249,11 @@ These features best match the product direction:
 
 ## 3-Week Roadmap
 
-### Week 1: History
+### Week 1: Journal
 
 Goal: make past entries useful.
 
-- build a History tab
+- build a Journal tab
 - show entries in reverse chronological order
 - display date, mood, tags, and short note preview
 - add simple filters by mood, tag, and month
@@ -275,7 +290,7 @@ Goal: make tracking personal and consistent.
 
 ## Suggested Release Milestones
 
-- `v0.2`: History
+- `v0.2`: Journal
 - `v0.3`: Insights
 - `v0.4`: Custom tags + weekly recap + reminders
 
@@ -283,12 +298,15 @@ Goal: make tracking personal and consistent.
 
 ### Done
 
-- `Week 1`: History is now implemented
+- `Week 1`: Journal is now implemented
 - `Week 2`: Insights is now implemented
+- `Week 3`: Custom tags, weekly recap, reminders, and basic Settings are now implemented
 
 ### Next
 
-- `Week 3`: Custom tags, weekly recap, reminders, and basic Settings
+- sleep / energy / stress context
+- privacy lock
+- backup / sync
 
 ## Best Next Milestone
 
@@ -298,7 +316,7 @@ The strongest near-term milestone is:
 
 Includes:
 
-- History timeline
+- Journal timeline
 - Insights tab
 - Custom tags
 - Weekly recap
@@ -327,15 +345,10 @@ That should be treated as a planned later refactor, not an immediate change.
 
 ## Immediate Next Step
 
-Build `Week 3`: customization and retention.
+Polish and deepen the reflection data.
 
-That continues the product shift from:
+That means the best next improvements are:
 
-- logging data
-- reviewing data
-- understanding patterns
-
-to:
-
-- tracking personal triggers more accurately
-- giving users a reason to return regularly
+- sleep / energy / stress fields
+- stronger pattern detection
+- privacy and backup improvements
