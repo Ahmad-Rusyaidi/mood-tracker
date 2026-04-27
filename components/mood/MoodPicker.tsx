@@ -5,7 +5,7 @@ import { MoodButton } from "./MoodButton";
 
 import { styles } from "@/styles/mood/MoodPicker.styles";
 
-const MOOD_UI: Array<{ mood: Mood; emoji: string; label: string }> = [
+const MOOD_UI: { mood: Mood; emoji: string; label: string }[] = [
   { mood: "happy", emoji: "😄", label: "Happy" },
   { mood: "sad", emoji: "😢", label: "Sad" },
   { mood: "angry", emoji: "😠", label: "Angry" },

@@ -52,7 +52,7 @@ export function MonthCalendar({
     const offset = dayOfWeek(first); // 0..6
     const total = daysInMonth(month);
 
-    const cells: Array<{ date: string | null; day: number | null }> = [];
+    const cells: { date: string | null; day: number | null }[] = [];
 
     for (let i = 0; i < offset; i++) cells.push({ date: null, day: null });
 

@@ -161,22 +161,23 @@ export function DayCalendar({
 
   // Note draft
   const [noteDraft, setNoteDraft] = useState(entry?.note ?? "");
+  const entryNote = entry?.note ?? "";
 
   useEffect(() => {
-    setNoteDraft(entry?.note ?? "");
-  }, [entry?.updatedAt]);
+    setNoteDraft(entryNote);
+  }, [entry?.updatedAt, entryNote]);
 
   // Auto-save note (only after mood exists)
   useEffect(() => {
     if (!entry) return;
 
     const id = setTimeout(() => {
-      if ((entry.note ?? "") === noteDraft) return;
+      if (entryNote === noteDraft) return;
       onChangeNote(noteDraft);
     }, 450);
 
     return () => clearTimeout(id);
-  }, [noteDraft, entry, entry?.updatedAt, onChangeNote]);
+  }, [noteDraft, entry, entry?.updatedAt, entryNote, onChangeNote]);
 
   // Reset editing state when changing date / entry updates
   useEffect(() => {

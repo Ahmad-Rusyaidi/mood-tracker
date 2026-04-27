@@ -1,4 +1,5 @@
 import { styles } from "@/styles/mood/index.styles";
+import { useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -24,6 +25,11 @@ import { toISODateLocal } from "@/utils";
 
 type ViewMode = "day" | "week" | "month";
 
+function parseISODateLocal(iso: string) {
+  const [year, month, day] = iso.split("-").map(Number);
+  return new Date(year ?? 0, (month ?? 1) - 1, day ?? 1);
+}
+
 function countActiveFilters(f: MonthFiltersState) {
   return (
     f.moods.length +
@@ -34,6 +40,7 @@ function countActiveFilters(f: MonthFiltersState) {
 }
 
 export default function HomeScreen() {
+  const params = useLocalSearchParams<{ date?: string; view?: string }>();
   const today = useMemo(() => new Date(), []);
   const [month, setMonth] = useState(
     new Date(today.getFullYear(), today.getMonth(), 1)
@@ -68,6 +75,22 @@ export default function HomeScreen() {
   useEffect(() => {
     if (viewMode !== "month") setFiltersOpen(false);
   }, [viewMode]);
+
+  useEffect(() => {
+    const requestedDate = typeof params.date === "string" ? params.date : null;
+    const requestedView = typeof params.view === "string" ? params.view : null;
+    if (!requestedDate) return;
+
+    const parsed = parseISODateLocal(requestedDate);
+    if (Number.isNaN(parsed.getTime())) return;
+
+    setSelectedDate(requestedDate);
+    setMonth(new Date(parsed.getFullYear(), parsed.getMonth(), 1));
+
+    if (requestedView === "day" || requestedView === "week" || requestedView === "month") {
+      setViewMode(requestedView);
+    }
+  }, [params.date, params.view]);
 
   const handleSelectDateFromMonth = (date: string) => {
     setSelectedDate(date);

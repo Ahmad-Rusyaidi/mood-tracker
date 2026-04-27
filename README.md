@@ -97,6 +97,14 @@ The app already has a solid core and is beyond starter level in the main mood fl
 - notes
 - preset tags
 - day / week / month views
+- history timeline
+- history filters by mood, month, and tag
+- jump from history entry back to that day
+- insights tab
+- weekly and monthly mood summaries
+- current streak, longest streak, and most common mood insights
+- top tags and hard-day tag pattern summaries
+- weekday rhythm insights when enough data exists
 - monthly filters
 - streaks
 - same-mood streaks
@@ -105,7 +113,7 @@ The app already has a solid core and is beyond starter level in the main mood fl
 
 ### Current Technical Shape
 
-- Expo Router app with one main tab
+- Expo Router app with Home, History, and Insights tabs
 - local-only persistence
 - one mood entry per `YYYY-MM-DD`
 - hardcoded mood set
@@ -113,8 +121,6 @@ The app already has a solid core and is beyond starter level in the main mood fl
 
 ### Not Yet Implemented
 
-- history timeline
-- insights tab
 - settings tab
 - custom tags
 - weekly recap
@@ -273,6 +279,17 @@ Goal: make tracking personal and consistent.
 - `v0.3`: Insights
 - `v0.4`: Custom tags + weekly recap + reminders
 
+## Progress Snapshot
+
+### Done
+
+- `Week 1`: History is now implemented
+- `Week 2`: Insights is now implemented
+
+### Next
+
+- `Week 3`: Custom tags, weekly recap, reminders, and basic Settings
+
 ## Best Next Milestone
 
 The strongest near-term milestone is:
@@ -310,14 +327,15 @@ That should be treated as a planned later refactor, not an immediate change.
 
 ## Immediate Next Step
 
-Build `History` first, then `Insights`.
+Build `Week 3`: customization and retention.
 
-That sequence gives users the fastest jump from:
+That continues the product shift from:
 
 - logging data
+- reviewing data
+- understanding patterns
 
 to:
 
-- reviewing data
-- understanding patterns
-- getting actual value from the app
+- tracking personal triggers more accurately
+- giving users a reason to return regularly
