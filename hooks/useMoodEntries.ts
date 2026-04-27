@@ -1,5 +1,6 @@
 import { moodStorage } from "@/storage";
-import type { Mood, MoodEntry } from "@/types";
+import type { ContextScale, Mood, MoodContextKey, MoodEntry } from "@/types";
+import { syncMoodReminderScheduleAsync } from "@/utils/reminders";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type MoodEntriesMap = Record<string, MoodEntry>; // key = YYYY-MM-DD
@@ -31,6 +32,7 @@ export function useMoodEntries() {
   const setMoodForDate = useCallback(async (date: string, mood: Mood) => {
     const entry = await moodStorage.setMoodForDate(date, mood);
     setMap((prev) => ({ ...prev, [date]: entry }));
+    void syncMoodReminderScheduleAsync({ requestPermissions: false });
     return entry;
   }, []);
 
@@ -46,6 +48,15 @@ export function useMoodEntries() {
     return entry;
   }, []);
 
+  const setContextForDate = useCallback(
+    async (date: string, key: MoodContextKey, value: ContextScale | null) => {
+      const entry = await moodStorage.setContextForDate(date, key, value);
+      setMap((prev) => ({ ...prev, [date]: entry }));
+      return entry;
+    },
+    []
+  );
+
   const removeByDate = useCallback(async (date: string) => {
     await moodStorage.removeByDate(date);
     setMap((prev) => {
@@ -54,6 +65,7 @@ export function useMoodEntries() {
       delete copy[date];
       return copy;
     });
+    void syncMoodReminderScheduleAsync({ requestPermissions: false });
   }, []);
 
   const entries = useMemo(() => {
@@ -74,6 +86,7 @@ export function useMoodEntries() {
     setMoodForDate,
     setTagsForDate,
     setNoteForDate,
+    setContextForDate,
     removeByDate,
   };
 }

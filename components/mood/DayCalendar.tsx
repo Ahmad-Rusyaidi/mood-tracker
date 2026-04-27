@@ -4,6 +4,7 @@ import {
   Animated,
   Dimensions,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
   View,
@@ -16,7 +17,7 @@ import ConfettiCannon from "react-native-confetti-cannon";
 import { MoodPicker } from "@/components/mood";
 import { TagChip } from "@/components/mood/TagChip";
 import { DEFAULT_TAGS } from "@/constants/tags";
-import type { Mood, MoodEntry } from "@/types";
+import type { ContextScale, Mood, MoodContextKey, MoodEntry } from "@/types";
 import { getDailyPrompt } from "@/utils/moodPrompts";
 import { moodSparkleColors } from "@/utils/moodSparkle";
 import { getMoodStreak, getSameMoodStreak } from "@/utils/moodStats";
@@ -30,10 +31,45 @@ type Props = {
   onChangeMood: (mood: Mood) => void;
   onChangeTags: (tags: string[]) => void;
   onChangeNote: (note: string) => void;
+  onChangeContext: (key: MoodContextKey, value: ContextScale | null) => void;
   entriesMap: Record<string, MoodEntry>;
   availableTags: string[];
   onCreateCustomTag: (tag: string) => Promise<unknown>;
 };
+
+type ContextField = {
+  key: MoodContextKey;
+  title: string;
+  lowLabel: string;
+  highLabel: string;
+  accent: string;
+};
+
+const CONTEXT_FIELDS: ContextField[] = [
+  {
+    key: "energy",
+    title: "Energy",
+    lowLabel: "Low",
+    highLabel: "High",
+    accent: "#F59E0B",
+  },
+  {
+    key: "stress",
+    title: "Stress",
+    lowLabel: "Calm",
+    highLabel: "High",
+    accent: "#F97316",
+  },
+  {
+    key: "sleep",
+    title: "Sleep",
+    lowLabel: "Bad",
+    highLabel: "Great",
+    accent: "#3B82F6",
+  },
+] as const;
+
+const SCALE_VALUES: ContextScale[] = [1, 2, 3, 4, 5];
 
 function uniqClean(tags: string[]) {
   return Array.from(new Set(tags.map((t) => t.trim()).filter(Boolean)));
@@ -67,29 +103,24 @@ function formatFriendlyDate(iso: string) {
 type HeaderKind = "today" | "yesterday" | "tomorrow" | "date";
 
 function isLateNightNow() {
-  // Local time
   const now = new Date();
-  return now.getHours() >= 22; // 10pm+
+  return now.getHours() >= 22;
 }
 
-// 🌈 Accent colors per kind (keep simple + cute)
 const ACCENT: Record<HeaderKind, string> = {
-  today: "#7C3AED",     // purple
-  yesterday: "#2563EB", // blue
-  tomorrow: "#10B981",  // green
-  date: "#111827",      // neutral text
+  today: "#7C3AED",
+  yesterday: "#2563EB",
+  tomorrow: "#10B981",
+  date: "#111827",
 };
 
-// ✅ Only special titles for yesterday/today/tomorrow.
-// Today after 10pm -> "Late night check-in"
 function getHeaderInfo(iso: string) {
   const diff = diffDaysFromToday(iso);
 
   if (diff === 0) {
-    const late = isLateNightNow();
     return {
       kind: "today" as const,
-      title: late ? "Late night check-in" : "Today’s vibe",
+      title: isLateNightNow() ? "Late night check-in" : "Today's vibe",
       showDate: true,
       accent: ACCENT.today,
     };
@@ -121,22 +152,78 @@ function getHeaderInfo(iso: string) {
   };
 }
 
-// ✅ Cute subtitle variants (also respects late-night)
-function getCuteSubtitle(iso: string, hasEntry: boolean) {
+function getSubtitle(iso: string, hasEntry: boolean) {
   const diff = diffDaysFromToday(iso);
 
   if (hasEntry) {
-    if (diff === 0) return isLateNightNow() ? "Proud of you for checking in 🌙✨" : "Cute — mood locked in ✨";
-    if (diff === -1) return "A tiny recap moment 🧸";
-    if (diff === 1) return "Planning ahead? love that for you 💫";
-    return `Your vibe for ${formatFriendlyDate(iso)} ✨`;
+    if (diff === 0) return isLateNightNow() ? "Nice work checking in before bed." : "Mood saved for today.";
+    if (diff === -1) return "A small look back at yesterday.";
+    if (diff === 1) return "A little planning ahead can help.";
+    return `Your check-in for ${formatFriendlyDate(iso)}.`;
   }
 
-  // no entry yet
-  if (diff === 0) return isLateNightNow() ? "How was your day… really? 🌙🫶" : "How’s your heart today? 💖";
-  if (diff === -1) return "What was the vibe yesterday? 🫶";
-  if (diff === 1) return "What vibe do you want tomorrow? 🌙";
+  if (diff === 0) return isLateNightNow() ? "How did today actually feel?" : "How are you feeling today?";
+  if (diff === -1) return "What was yesterday like?";
+  if (diff === 1) return "What do you want tomorrow to feel like?";
   return getDailyPrompt(iso);
+}
+
+function ContextScaleRow({
+  field,
+  value,
+  onChange,
+}: {
+  field: ContextField;
+  value?: ContextScale;
+  onChange: (value: ContextScale | null) => void;
+}) {
+  return (
+    <View style={styles.contextCard}>
+      <View style={styles.contextCardHeader}>
+        <View style={styles.contextTitleWrap}>
+          <Text style={styles.contextTitle}>{field.title}</Text>
+          <Text style={styles.contextValue}>{value ? `${value}/5` : "Skip"}</Text>
+        </View>
+
+        <Pressable onPress={() => onChange(null)} hitSlop={8}>
+          <Text style={styles.contextClear}>{value ? "Clear" : "Optional"}</Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.contextScaleRow}>
+        {SCALE_VALUES.map((step) => {
+          const active = value != null && step <= value;
+          const isSelected = value === step;
+
+          return (
+            <Pressable
+              key={step}
+              onPress={() => onChange(value === step ? null : step)}
+              style={[
+                styles.contextScaleStep,
+                active ? { backgroundColor: field.accent, borderColor: field.accent } : null,
+                isSelected ? styles.contextScaleStepSelected : null,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.contextScaleStepText,
+                  active ? styles.contextScaleStepTextActive : null,
+                ]}
+              >
+                {step}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <View style={styles.contextScaleLabels}>
+        <Text style={styles.contextScaleLabel}>{field.lowLabel}</Text>
+        <Text style={styles.contextScaleLabel}>{field.highLabel}</Text>
+      </View>
+    </View>
+  );
 }
 
 export function DayCalendar({
@@ -145,6 +232,7 @@ export function DayCalendar({
   onChangeMood,
   onChangeTags,
   onChangeNote,
+  onChangeContext,
   entriesMap,
   availableTags,
   onCreateCustomTag,
@@ -154,15 +242,12 @@ export function DayCalendar({
   const [customTagDraft, setCustomTagDraft] = useState("");
   const { width, height } = Dimensions.get("window");
 
-  // Animations
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
   const cardOpacity = useRef(new Animated.Value(1)).current;
 
-  // ✅ expo-audio player
   const sfxPlayer = useAudioPlayer(require("@/assets/sounds/mood-select.mp3"));
 
-  // Note draft
   const [noteDraft, setNoteDraft] = useState(entry?.note ?? "");
   const entryNote = entry?.note ?? "";
 
@@ -170,7 +255,6 @@ export function DayCalendar({
     setNoteDraft(entryNote);
   }, [entry?.updatedAt, entryNote]);
 
-  // Auto-save note (only after mood exists)
   useEffect(() => {
     if (!entry) return;
 
@@ -182,7 +266,6 @@ export function DayCalendar({
     return () => clearTimeout(id);
   }, [noteDraft, entry, entry?.updatedAt, entryNote, onChangeNote]);
 
-  // Reset editing state when changing date / entry updates
   useEffect(() => {
     setIsEditing(!entry);
     cardOpacity.setValue(1);
@@ -239,9 +322,14 @@ export function DayCalendar({
     }
   };
 
-  const emoji = entry ? moodToEmoji[entry.mood] : "🙂";
+  const handleContextChange = (key: MoodContextKey, value: ContextScale | null) => {
+    if (!entry) return;
 
-  // Streaks
+    onChangeContext(key, value);
+    void Haptics.selectionAsync();
+  };
+
+  const emoji = entry ? moodToEmoji[entry.mood] : moodToEmoji.neutral;
   const streak = getMoodStreak(entriesMap, selectedDate);
   const same = getSameMoodStreak(entriesMap, selectedDate);
 
@@ -257,13 +345,11 @@ export function DayCalendar({
   );
 
   const toggleTag = async (tag: string) => {
-    // ✅ must choose mood first
     if (!entry) return;
 
-    const current = selectedTags;
-    const next = current.includes(tag)
-      ? current.filter((t) => t !== tag)
-      : [...current, tag];
+    const next = selectedTags.includes(tag)
+      ? selectedTags.filter((current) => current !== tag)
+      : [...selectedTags, tag];
 
     try {
       onChangeTags(uniqClean(next));
@@ -288,15 +374,10 @@ export function DayCalendar({
   };
 
   const headerInfo = useMemo(() => getHeaderInfo(selectedDate), [selectedDate]);
-
-  const subtitle = useMemo(
-    () => getCuteSubtitle(selectedDate, !!entry),
-    [selectedDate, entry]
-  );
+  const subtitle = useMemo(() => getSubtitle(selectedDate, !!entry), [selectedDate, entry]);
 
   return (
     <View style={styles.container}>
-      {/* Sparkle */}
       {showConfetti && (
         <View
           pointerEvents="none"
@@ -320,122 +401,139 @@ export function DayCalendar({
         </View>
       )}
 
-      {/* ✅ Header (with accent color) */}
-      <Text style={[styles.dateText, { color: headerInfo.accent }]}>
-        {headerInfo.title}
-      </Text>
-
-      {headerInfo.showDate && (
-        <Text style={styles.dateSubText}>{formatFriendlyDate(selectedDate)}</Text>
-      )}
-
-      {/* ✅ Cute subtitle */}
-      <Text style={styles.subtitle}>{subtitle}</Text>
-
-      {/* Emoji */}
-      <Animated.View
-        style={[
-          {
-            shadowRadius: 24,
-            shadowOpacity: 1,
-            shadowOffset: { width: 0, height: 0 },
-            backgroundColor: "transparent",
-          },
-          { shadowColor: glow },
-        ]}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <Animated.Text
-          style={[styles.bigEmoji, { transform: [{ scale: scaleAnim }] }]}
+        <Text style={[styles.dateText, { color: headerInfo.accent }]}>{headerInfo.title}</Text>
+
+        {headerInfo.showDate ? (
+          <Text style={styles.dateSubText}>{formatFriendlyDate(selectedDate)}</Text>
+        ) : null}
+
+        <Text style={styles.subtitle}>{subtitle}</Text>
+
+        <Animated.View
+          style={[
+            {
+              shadowRadius: 24,
+              shadowOpacity: 1,
+              shadowOffset: { width: 0, height: 0 },
+              backgroundColor: "transparent",
+            },
+            { shadowColor: glow },
+          ]}
         >
-          {emoji}
-        </Animated.Text>
-      </Animated.View>
+          <Animated.Text
+            style={[styles.bigEmoji, { transform: [{ scale: scaleAnim }] }]}
+          >
+            {emoji}
+          </Animated.Text>
+        </Animated.View>
 
-      {/* Logging streak */}
-      {streak >= 3 && <Text style={styles.streakText}>🔥 {streak}-day streak</Text>}
+        {streak >= 3 ? <Text style={styles.streakText}>Streak: {streak} days</Text> : null}
 
-      {/* Same mood streak */}
-      {same.streak >= 3 && same.mood && (
-        <Text style={styles.sameMoodStreakText}>
-          {moodToEmoji[same.mood]} {same.streak}-day {same.mood} streak
-        </Text>
-      )}
+        {same.streak >= 3 && same.mood ? (
+          <Text style={styles.sameMoodStreakText}>
+            {same.streak} straight days of {same.mood}
+          </Text>
+        ) : null}
 
-      {/* TAGS (only after mood exists) */}
-      {entry ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>TAGS</Text>
+        {entry ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>CONTEXT</Text>
+            <Text style={styles.sectionHint}>
+              Optional signals that make your insights more useful over time.
+            </Text>
 
-          <View style={styles.tagsWrap}>
-            {allTags.map((tag) => (
-              <TagChip
-                key={tag}
-                label={tag}
-                active={(entry.tags ?? []).includes(tag)}
-                onPress={() => void toggleTag(tag)}
-              />
-            ))}
-          </View>
-
-          <View style={styles.customTagComposer}>
-            <TextInput
-              value={customTagDraft}
-              onChangeText={setCustomTagDraft}
-              placeholder="Add custom tag"
-              placeholderTextColor="rgba(17,24,39,0.35)"
-              style={styles.customTagInput}
-              autoCapitalize="none"
-              autoCorrect={false}
-              returnKeyType="done"
-              onSubmitEditing={() => void handleAddCustomTag()}
-            />
-
-            <Pressable
-              onPress={() => void handleAddCustomTag()}
-              style={styles.customTagButton}
-            >
-              <Text style={styles.customTagButtonText}>Add tag</Text>
-            </Pressable>
-          </View>
-        </View>
-      ) : null}
-
-      {/* NOTE (only after mood exists) */}
-      {entry ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>NOTE</Text>
-
-          <View style={styles.noteWrap}>
-            <TextInput
-              value={noteDraft}
-              onChangeText={setNoteDraft}
-              placeholder="Write a quick note…"
-              placeholderTextColor="rgba(17,24,39,0.35)"
-              multiline
-              style={styles.noteInput}
-            />
-            <Text style={styles.autosaveText}>Auto-saved</Text>
-          </View>
-        </View>
-      ) : null}
-
-      {/* Picker */}
-      {isEditing ? (
-        <Animated.View style={{ opacity: cardOpacity, marginTop: 14 }}>
-          <View style={styles.pickerWrap}>
-            <View style={styles.pickerCard}>
-              <MoodPicker value={entry?.mood ?? null} onChange={handlePick} />
+            <View style={styles.contextWrap}>
+              {CONTEXT_FIELDS.map((field) => (
+                <ContextScaleRow
+                  key={field.key}
+                  field={field}
+                  value={entry[field.key]}
+                  onChange={(value) => handleContextChange(field.key, value)}
+                />
+              ))}
             </View>
           </View>
-        </Animated.View>
-      ) : (
-        <Pressable
-          onPress={() => setIsEditing(true)}
-          style={[styles.changeBtn, { marginTop: 14 }]}
-        >
-          <Text style={styles.changeBtnText}>Change mood</Text>
-        </Pressable>
-      )}
+        ) : null}
+
+        {entry ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>TAGS</Text>
+
+            <View style={styles.tagsWrap}>
+              {allTags.map((tag) => (
+                <TagChip
+                  key={tag}
+                  label={tag}
+                  active={(entry.tags ?? []).includes(tag)}
+                  onPress={() => void toggleTag(tag)}
+                />
+              ))}
+            </View>
+
+            <View style={styles.customTagComposer}>
+              <TextInput
+                value={customTagDraft}
+                onChangeText={setCustomTagDraft}
+                placeholder="Add custom tag"
+                placeholderTextColor="rgba(17,24,39,0.35)"
+                style={styles.customTagInput}
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="done"
+                onSubmitEditing={() => void handleAddCustomTag()}
+              />
+
+              <Pressable
+                onPress={() => void handleAddCustomTag()}
+                style={styles.customTagButton}
+              >
+                <Text style={styles.customTagButtonText}>Add tag</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
+
+        {entry ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>NOTE</Text>
+
+            <View style={styles.noteWrap}>
+              <TextInput
+                value={noteDraft}
+                onChangeText={setNoteDraft}
+                placeholder="Write a quick note..."
+                placeholderTextColor="rgba(17,24,39,0.35)"
+                multiline
+                style={styles.noteInput}
+              />
+              <Text style={styles.autosaveText}>Auto-saved</Text>
+            </View>
+          </View>
+        ) : null}
+
+        {isEditing ? (
+          <Animated.View style={{ opacity: cardOpacity, marginTop: 14 }}>
+            <View style={styles.pickerWrap}>
+              <View style={styles.pickerCard}>
+                <MoodPicker value={entry?.mood ?? null} onChange={handlePick} />
+              </View>
+            </View>
+          </Animated.View>
+        ) : (
+          <Pressable
+            onPress={() => setIsEditing(true)}
+            style={[styles.changeBtn, { marginTop: 14 }]}
+          >
+            <Text style={styles.changeBtnText}>Change mood</Text>
+          </Pressable>
+        )}
+      </ScrollView>
     </View>
   );
 }

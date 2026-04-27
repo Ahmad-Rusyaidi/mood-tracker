@@ -2,6 +2,8 @@
 export const MOODS = ["happy", "sad", "angry", "neutral", "anxious"] as const;
 
 export type Mood = (typeof MOODS)[number];
+export type ContextScale = 1 | 2 | 3 | 4 | 5;
+export type MoodContextKey = "energy" | "stress" | "sleep";
 
 export type MoodEntry = {
   /** YYYY-MM-DD in user's local time */
@@ -11,9 +13,11 @@ export type MoodEntry = {
   updatedAt: number; // epoch ms
 
   // NEW
-  tags?: string[];   // e.g. ["work","sleep","exercise"]
-  note?: string;     // short journal
+  tags?: string[]; // e.g. ["work","sleep","exercise"]
+  note?: string; // short journal
+  energy?: ContextScale;
+  stress?: ContextScale;
+  sleep?: ContextScale;
 };
-
 
 export type CalendarViewMode = "day" | "week" | "month";

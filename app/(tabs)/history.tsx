@@ -3,13 +3,14 @@ import { colors, radius, spacing, typography } from "@/styles";
 import type { Mood, MoodEntry } from "@/types";
 import { moodToEmoji } from "@/utils/moodUi";
 import { useRouter } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useDeferredValue, useEffect, useMemo, useState } from "react";
 import {
   FlatList,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -46,6 +47,24 @@ function formatEntryDate(date: string) {
 function truncate(text: string, maxLength: number) {
   if (text.length <= maxLength) return text;
   return `${text.slice(0, maxLength - 1).trimEnd()}...`;
+}
+
+function normalizeQuery(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function matchesSearch(entry: MoodEntry, query: string) {
+  if (!query) return true;
+
+  const searchableParts = [
+    entry.date,
+    entry.mood,
+    formatEntryDate(entry.date),
+    entry.note ?? "",
+    ...(entry.tags ?? []),
+  ];
+
+  return searchableParts.some((part) => part.toLowerCase().includes(query));
 }
 
 function FilterChip({
@@ -122,6 +141,8 @@ export default function JournalScreen() {
   const [selectedMood, setSelectedMood] = useState<MoodFilter>("all");
   const [selectedMonth, setSelectedMonth] = useState<MonthFilter>("all");
   const [selectedTag, setSelectedTag] = useState<string | "all">("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const deferredSearchQuery = useDeferredValue(searchQuery);
 
   const monthOptions = useMemo(() => {
     return Array.from(new Set(entries.map((entry) => getMonthKey(entry.date))));
@@ -146,16 +167,23 @@ export default function JournalScreen() {
   }, [selectedTag, tagOptions]);
 
   const filteredEntries = useMemo(() => {
+    const normalizedQuery = normalizeQuery(deferredSearchQuery);
+
     return entries.filter((entry) => {
       if (selectedMood !== "all" && entry.mood !== selectedMood) return false;
       if (selectedMonth !== "all" && getMonthKey(entry.date) !== selectedMonth) return false;
       if (selectedTag !== "all" && !(entry.tags ?? []).includes(selectedTag)) return false;
+      if (!matchesSearch(entry, normalizedQuery)) return false;
       return true;
     });
-  }, [entries, selectedMood, selectedMonth, selectedTag]);
+  }, [entries, selectedMood, selectedMonth, selectedTag, deferredSearchQuery]);
 
   const hasEntries = entries.length > 0;
-  const hasFilters = selectedMood !== "all" || selectedMonth !== "all" || selectedTag !== "all";
+  const hasFilters =
+    selectedMood !== "all" ||
+    selectedMonth !== "all" ||
+    selectedTag !== "all" ||
+    normalizeQuery(searchQuery).length > 0;
   const entryLabel = filteredEntries.length === 1 ? "entry" : "entries";
 
   const listHeader = (
@@ -164,6 +192,17 @@ export default function JournalScreen() {
       <Text style={styles.subtitle}>
         Browse your past check-ins, filter them, and reopen any day when you want to revisit it.
       </Text>
+
+      <TextInput
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        placeholder="Search notes, tags, moods, or dates"
+        placeholderTextColor="rgba(17,24,39,0.35)"
+        style={styles.searchInput}
+        autoCorrect={false}
+        autoCapitalize="none"
+        clearButtonMode="while-editing"
+      />
 
       <FilterSection title="Mood">
         <FilterChip label="All" active={selectedMood === "all"} onPress={() => setSelectedMood("all")} />
@@ -252,6 +291,7 @@ export default function JournalScreen() {
                     setSelectedMood("all");
                     setSelectedMonth("all");
                     setSelectedTag("all");
+                    setSearchQuery("");
                   }}
                   style={styles.resetButton}
                 >
@@ -297,6 +337,16 @@ const styles = StyleSheet.create({
   },
   filterSection: {
     gap: spacing.sm,
+  },
+  searchInput: {
+    minHeight: 46,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "#F8FAFF",
+    paddingHorizontal: 14,
+    fontSize: 14,
+    color: colors.text,
   },
   filterTitle: {
     ...typography.subtitle,

@@ -1,14 +1,8 @@
-import { appSettingsStorage } from "@/storage";
-import type { AppSettings } from "@/types";
+import { appSettingsStorage, getDefaultAppSettings } from "@/storage";
+import type { AppSettings, ReminderWeekday } from "@/types";
 import { useCallback, useEffect, useState } from "react";
 
-const DEFAULT_SETTINGS: AppSettings = {
-  customTags: [],
-  reminders: {
-    enabled: false,
-    time: "20:00",
-  },
-};
+const DEFAULT_SETTINGS: AppSettings = getDefaultAppSettings();
 
 export function useAppSettings() {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
@@ -52,6 +46,18 @@ export function useAppSettings() {
     return next;
   }, []);
 
+  const setReminderWeekdays = useCallback(async (weekdays: ReminderWeekday[]) => {
+    const next = await appSettingsStorage.setReminderWeekdays(weekdays);
+    setSettings(next);
+    return next;
+  }, []);
+
+  const setReminderSkipIfLogged = useCallback(async (skipIfLogged: boolean) => {
+    const next = await appSettingsStorage.setReminderSkipIfLogged(skipIfLogged);
+    setSettings(next);
+    return next;
+  }, []);
+
   const resetSettings = useCallback(async () => {
     await appSettingsStorage.reset();
     setSettings(DEFAULT_SETTINGS);
@@ -65,6 +71,8 @@ export function useAppSettings() {
     removeCustomTag,
     setReminderEnabled,
     setReminderTime,
+    setReminderWeekdays,
+    setReminderSkipIfLogged,
     resetSettings,
   };
 }

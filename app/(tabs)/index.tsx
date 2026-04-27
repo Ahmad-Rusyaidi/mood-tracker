@@ -48,8 +48,15 @@ export default function HomeScreen() {
   const [selectedDate, setSelectedDate] = useState(toISODateLocal(today));
   const [viewMode, setViewMode] = useState<ViewMode>("month");
 
-  const { map, getByDate, setMoodForDate, setTagsForDate, setNoteForDate, refresh } =
-    useMoodEntries();
+  const {
+    map,
+    getByDate,
+    setMoodForDate,
+    setTagsForDate,
+    setNoteForDate,
+    setContextForDate,
+    refresh,
+  } = useMoodEntries();
   const { settings, addCustomTag } = useAppSettings();
   const selectedEntry = getByDate(selectedDate);
 
@@ -261,6 +268,7 @@ export default function HomeScreen() {
             onChangeMood={(mood) => void setMoodForDate(selectedDate, mood)}
             onChangeTags={(tags) => void setTagsForDate(selectedDate, tags)}
             onChangeNote={(note) => void setNoteForDate(selectedDate, note)}
+            onChangeContext={(key, value) => void setContextForDate(selectedDate, key, value)}
             entriesMap={map}
             availableTags={settings.customTags}
             onCreateCustomTag={(tag) => addCustomTag(tag)}

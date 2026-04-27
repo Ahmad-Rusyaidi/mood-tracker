@@ -1,4 +1,4 @@
-import type { Mood, MoodEntry } from "@/types";
+import type { Mood, MoodContextKey, MoodEntry } from "@/types";
 
 export type MoodSummary = Record<Mood, number>;
 
@@ -7,11 +7,51 @@ export type TagStat = {
   count: number;
 };
 
+export type TagAssociation = {
+  tag: string;
+  count: number;
+  averageScore: number;
+  deltaFromBaseline: number;
+};
+
+export type ContextSignal = {
+  key: MoodContextKey;
+  lowCount: number;
+  highCount: number;
+  lowAverageScore: number | null;
+  highAverageScore: number | null;
+  delta: number | null;
+};
+
+export type ContextCoverage = {
+  key: MoodContextKey;
+  totalCount: number;
+  thisWeekCount: number;
+  enoughOverall: boolean;
+  enoughThisWeek: boolean;
+};
+
 export type WeekdayInsight = {
   weekday: number;
   label: string;
   count: number;
   averageScore: number;
+};
+
+export type WeekComparison = {
+  currentCount: number;
+  previousCount: number;
+  currentAverageScore: number | null;
+  previousAverageScore: number | null;
+  delta: number | null;
+};
+
+export type ComboHighlight = {
+  features: [string, string];
+  count: number;
+  averageScore: number;
+  deltaFromBaseline: number;
+  tone: "supportive" | "challenging";
 };
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
@@ -63,6 +103,40 @@ function incrementMood(summary: MoodSummary, mood: Mood) {
   summary[mood] += 1;
 }
 
+function average(numbers: number[]) {
+  if (numbers.length === 0) return null;
+  return numbers.reduce((sum, value) => sum + value, 0) / numbers.length;
+}
+
+function roundToTenth(value: number) {
+  return Math.round(value * 10) / 10;
+}
+
+function getContextFeature(key: MoodContextKey, value: MoodEntry[MoodContextKey]) {
+  if (value == null) return null;
+  if (value <= 2) return `low_${key}`;
+  if (value >= 4) return `high_${key}`;
+  return null;
+}
+
+function getEntryFeatures(entry: MoodEntry) {
+  const features = new Set<string>();
+
+  const energyFeature = getContextFeature("energy", entry.energy);
+  const stressFeature = getContextFeature("stress", entry.stress);
+  const sleepFeature = getContextFeature("sleep", entry.sleep);
+
+  if (energyFeature) features.add(energyFeature);
+  if (stressFeature) features.add(stressFeature);
+  if (sleepFeature) features.add(sleepFeature);
+
+  for (const tag of entry.tags ?? []) {
+    features.add(`tag:${tag}`);
+  }
+
+  return [...features];
+}
+
 export function getMonthSummary(
   entriesMap: Record<string, MoodEntry>,
   month: Date
@@ -90,9 +164,9 @@ export function getWeekSummary(
   const start = startOfWeek(anchorDate);
 
   for (let i = 0; i < 7; i++) {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    const entry = entriesMap[toISODateLocal(d)];
+    const date = new Date(start);
+    date.setDate(start.getDate() + i);
+    const entry = entriesMap[toISODateLocal(date)];
     if (!entry) continue;
     incrementMood(summary, entry.mood);
   }
@@ -123,8 +197,14 @@ export function countLoggedDaysInWeek(
   }).length;
 }
 
-export function getEntriesForWeek(entries: MoodEntry[], anchorDate: Date): MoodEntry[] {
+export function getEntriesForWeek(
+  entries: MoodEntry[],
+  anchorDate: Date,
+  weekOffset = 0
+): MoodEntry[] {
   const start = startOfWeek(anchorDate);
+  start.setDate(start.getDate() + weekOffset * 7);
+
   const end = new Date(start);
   end.setDate(start.getDate() + 6);
 
@@ -132,6 +212,33 @@ export function getEntriesForWeek(entries: MoodEntry[], anchorDate: Date): MoodE
     const date = parseISODateLocal(entry.date);
     return date >= start && date <= end;
   });
+}
+
+export function getAverageMoodScore(entries: MoodEntry[]) {
+  const score = average(entries.map((entry) => MOOD_SCORE[entry.mood]));
+  return score == null ? null : roundToTenth(score);
+}
+
+export function getWeekComparison(
+  entries: MoodEntry[],
+  anchorDate: Date
+): WeekComparison {
+  const currentWeekEntries = getEntriesForWeek(entries, anchorDate, 0);
+  const previousWeekEntries = getEntriesForWeek(entries, anchorDate, -1);
+
+  const currentAverageScore = getAverageMoodScore(currentWeekEntries);
+  const previousAverageScore = getAverageMoodScore(previousWeekEntries);
+
+  return {
+    currentCount: currentWeekEntries.length,
+    previousCount: previousWeekEntries.length,
+    currentAverageScore,
+    previousAverageScore,
+    delta:
+      currentAverageScore == null || previousAverageScore == null
+        ? null
+        : roundToTenth(currentAverageScore - previousAverageScore),
+  };
 }
 
 export function getMoodStreak(
@@ -245,6 +352,200 @@ export function getTopTagsForMoods(
   );
 }
 
+export function getTagAssociations(
+  entries: MoodEntry[],
+  minimumSamples = 2
+): TagAssociation[] {
+  const baseline = getAverageMoodScore(entries);
+  if (baseline == null) return [];
+
+  const buckets = new Map<string, { count: number; totalScore: number }>();
+
+  for (const entry of entries) {
+    const uniqueTags = new Set(entry.tags ?? []);
+    for (const tag of uniqueTags) {
+      const bucket = buckets.get(tag) ?? { count: 0, totalScore: 0 };
+      bucket.count += 1;
+      bucket.totalScore += MOOD_SCORE[entry.mood];
+      buckets.set(tag, bucket);
+    }
+  }
+
+  return [...buckets.entries()]
+    .map(([tag, bucket]) => {
+      const averageScore = bucket.totalScore / bucket.count;
+      return {
+        tag,
+        count: bucket.count,
+        averageScore: roundToTenth(averageScore),
+        deltaFromBaseline: roundToTenth(averageScore - baseline),
+      };
+    })
+    .filter((item) => item.count >= minimumSamples)
+    .sort((a, b) => {
+      const deltaDiff = Math.abs(b.deltaFromBaseline) - Math.abs(a.deltaFromBaseline);
+      if (deltaDiff !== 0) return deltaDiff;
+      if (b.count !== a.count) return b.count - a.count;
+      return a.tag.localeCompare(b.tag);
+    });
+}
+
+export function getTopSupportiveTags(
+  entries: MoodEntry[],
+  limit = 3,
+  minimumDelta = 0.4
+) {
+  return getTagAssociations(entries)
+    .filter((item) => item.deltaFromBaseline >= minimumDelta)
+    .sort((a, b) => {
+      if (b.deltaFromBaseline !== a.deltaFromBaseline) {
+        return b.deltaFromBaseline - a.deltaFromBaseline;
+      }
+      if (b.count !== a.count) return b.count - a.count;
+      return a.tag.localeCompare(b.tag);
+    })
+    .slice(0, limit);
+}
+
+export function getTopChallengingTags(
+  entries: MoodEntry[],
+  limit = 3,
+  minimumDelta = -0.4
+) {
+  return getTagAssociations(entries)
+    .filter((item) => item.deltaFromBaseline <= minimumDelta)
+    .sort((a, b) => {
+      if (a.deltaFromBaseline !== b.deltaFromBaseline) {
+        return a.deltaFromBaseline - b.deltaFromBaseline;
+      }
+      if (b.count !== a.count) return b.count - a.count;
+      return a.tag.localeCompare(b.tag);
+    })
+    .slice(0, limit);
+}
+
+export function getContextSignal(
+  entries: MoodEntry[],
+  key: MoodContextKey
+): ContextSignal | null {
+  const lowEntries = entries.filter((entry) => {
+    const value = entry[key];
+    return value != null && value <= 2;
+  });
+
+  const highEntries = entries.filter((entry) => {
+    const value = entry[key];
+    return value != null && value >= 4;
+  });
+
+  if (lowEntries.length < 2 && highEntries.length < 2) return null;
+
+  const lowAverageScore = getAverageMoodScore(lowEntries);
+  const highAverageScore = getAverageMoodScore(highEntries);
+
+  return {
+    key,
+    lowCount: lowEntries.length,
+    highCount: highEntries.length,
+    lowAverageScore,
+    highAverageScore,
+    delta:
+      lowAverageScore == null || highAverageScore == null
+        ? null
+        : roundToTenth(highAverageScore - lowAverageScore),
+  };
+}
+
+export function getContextSignals(entries: MoodEntry[]) {
+  return (["energy", "stress", "sleep"] as const)
+    .map((key) => getContextSignal(entries, key))
+    .filter((signal): signal is ContextSignal => signal != null)
+    .sort((a, b) => Math.abs(b.delta ?? 0) - Math.abs(a.delta ?? 0));
+}
+
+export function getContextCoverage(
+  entries: MoodEntry[],
+  key: MoodContextKey,
+  anchorDate: Date,
+  minimumSamples = 2
+): ContextCoverage {
+  const thisWeekEntries = getEntriesForWeek(entries, anchorDate);
+  const totalCount = entries.filter((entry) => entry[key] != null).length;
+  const thisWeekCount = thisWeekEntries.filter((entry) => entry[key] != null).length;
+
+  return {
+    key,
+    totalCount,
+    thisWeekCount,
+    enoughOverall: totalCount >= minimumSamples,
+    enoughThisWeek: thisWeekCount >= minimumSamples,
+  };
+}
+
+export function getComboHighlights(
+  entries: MoodEntry[],
+  limit = 3,
+  minimumSamples = 2,
+  minimumDelta = 0.6
+): ComboHighlight[] {
+  const baseline = getAverageMoodScore(entries);
+  if (baseline == null) return [];
+
+  const buckets = new Map<string, { count: number; totalScore: number; features: [string, string] }>();
+
+  for (const entry of entries) {
+    const features = getEntryFeatures(entry);
+
+    for (let i = 0; i < features.length; i += 1) {
+      for (let j = i + 1; j < features.length; j += 1) {
+        const first = features[i];
+        const second = features[j];
+
+        if (first.startsWith("tag:") && second.startsWith("tag:")) {
+          continue;
+        }
+
+        const pair = [first, second].sort() as [string, string];
+        const key = pair.join("|");
+        const bucket = buckets.get(key) ?? {
+          count: 0,
+          totalScore: 0,
+          features: pair,
+        };
+
+        bucket.count += 1;
+        bucket.totalScore += MOOD_SCORE[entry.mood];
+        buckets.set(key, bucket);
+      }
+    }
+  }
+
+  return [...buckets.values()]
+    .map((bucket) => {
+      const averageScore = bucket.totalScore / bucket.count;
+      const deltaFromBaseline = roundToTenth(averageScore - baseline);
+
+      return {
+        features: bucket.features,
+        count: bucket.count,
+        averageScore: roundToTenth(averageScore),
+        deltaFromBaseline,
+        tone: deltaFromBaseline >= 0 ? "supportive" : "challenging",
+      } as ComboHighlight;
+    })
+    .filter(
+      (item) => item.count >= minimumSamples && Math.abs(item.deltaFromBaseline) >= minimumDelta
+    )
+    .sort((a, b) => {
+      if (Math.abs(b.deltaFromBaseline) !== Math.abs(a.deltaFromBaseline)) {
+        return Math.abs(b.deltaFromBaseline) - Math.abs(a.deltaFromBaseline);
+      }
+      if (b.count !== a.count) return b.count - a.count;
+      return a.features.join("|").localeCompare(b.features.join("|"));
+    })
+    .slice(0, limit);
+}
+
 export function getWeekdayInsights(
   entries: MoodEntry[],
   minimumSamples = 2
@@ -268,7 +569,7 @@ export function getWeekdayInsights(
       weekday: bucket.weekday,
       label: bucket.label,
       count: bucket.count,
-      averageScore: bucket.totalScore / bucket.count,
+      averageScore: roundToTenth(bucket.totalScore / bucket.count),
     }))
     .sort((a, b) => b.averageScore - a.averageScore);
 }
