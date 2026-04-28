@@ -108,12 +108,6 @@ async function setTagsForDate(date: string, tags: string[]) {
   return entry;
 }
 
-async function setNoteForDate(date: string, note: string) {
-  const entry = await moodStorage.setNoteForDate(date, note);
-  upsertEntry(entry);
-  return entry;
-}
-
 async function setContextForDate(
   date: string,
   key: MoodContextKey,
@@ -159,7 +153,6 @@ export function useMoodEntries() {
       getByDate: (date: string) => snapshot.map[date] ?? null,
       setMoodForDate,
       setTagsForDate,
-      setNoteForDate,
       setContextForDate,
       removeByDate,
     }),

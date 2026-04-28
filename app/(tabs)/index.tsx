@@ -19,7 +19,6 @@ import {
 } from "@/components/mood/MonthFilters";
 import { WeekCalendar } from "@/components/mood/WeekCalendar";
 import { useAppSettings, useMoodEntries } from "@/hooks";
-import { moodStorage } from "@/storage";
 import { spacing } from "@/styles";
 import { toISODateLocal } from "@/utils";
 
@@ -28,6 +27,12 @@ type ViewMode = "day" | "week" | "month";
 function parseISODateLocal(iso: string) {
   const [year, month, day] = iso.split("-").map(Number);
   return new Date(year ?? 0, (month ?? 1) - 1, day ?? 1);
+}
+
+function addDays(date: Date, delta: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + delta);
+  return next;
 }
 
 function countActiveFilters(filters: MonthFiltersState) {
@@ -54,7 +59,6 @@ export default function HomeScreen() {
     setMoodForDate,
     setTagsForDate,
     setContextForDate,
-    refresh,
   } = useMoodEntries();
   const { settings, addCustomTag } = useAppSettings();
   const selectedEntry = getByDate(selectedDate);
@@ -244,6 +248,13 @@ export default function HomeScreen() {
             anchorDate={parseISODateLocal(selectedDate)}
             selectedDate={selectedDate}
             entriesMap={map}
+            onNavigateWeek={(delta) => {
+              const nextDate = addDays(parseISODateLocal(selectedDate), delta * 7);
+              setSelectedDate(toISODateLocal(nextDate));
+            }}
+            onJumpToToday={() => {
+              setSelectedDate(toISODateLocal(today));
+            }}
             onSelectDate={(date) => {
               setSelectedDate(date);
               setViewMode("day");
@@ -266,23 +277,6 @@ export default function HomeScreen() {
           />
         )}
       </View>
-
-      {__DEV__ && (
-        <Text
-          onPress={async () => {
-            await moodStorage.clearAll();
-            await refresh();
-          }}
-          style={{
-            color: "#EF4444",
-            fontWeight: "800",
-            marginTop: 10,
-            marginBottom: 10,
-          }}
-        >
-          Reset all data
-        </Text>
-      )}
     </SafeAreaView>
   );
 }

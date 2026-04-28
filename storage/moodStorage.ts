@@ -13,7 +13,16 @@ function now() {
 async function readMap(): Promise<MoodEntriesMap> {
   const raw = await AsyncStorage.getItem(StorageKeys.moodEntries);
   const parsed = safeJsonParse<MoodEntriesMap>(raw);
-  return parsed ?? {};
+  if (!parsed) return {};
+
+  const sanitized: MoodEntriesMap = {};
+  for (const entry of Object.values(parsed)) {
+    const clean = sanitizeEntry(entry);
+    if (!clean) continue;
+    sanitized[clean.date] = clean;
+  }
+
+  return sanitized;
 }
 
 async function writeMap(map: MoodEntriesMap): Promise<void> {
@@ -61,7 +70,6 @@ function sanitizeEntry(entry: MoodEntry): MoodEntry | null {
         a.localeCompare(b)
       )
     : undefined;
-  const note = typeof entry.note === "string" && entry.note.trim().length > 0 ? entry.note : undefined;
   const createdAt = Number.isFinite(entry.createdAt) ? entry.createdAt : now();
   const updatedAt = Number.isFinite(entry.updatedAt) ? entry.updatedAt : createdAt;
 
@@ -71,7 +79,6 @@ function sanitizeEntry(entry: MoodEntry): MoodEntry | null {
     createdAt,
     updatedAt,
     ...(tags && tags.length > 0 ? { tags } : {}),
-    ...(note ? { note } : {}),
     ...(cleanContextValue(entry.energy) ? { energy: cleanContextValue(entry.energy) } : {}),
     ...(cleanContextValue(entry.stress) ? { stress: cleanContextValue(entry.stress) } : {}),
     ...(cleanContextValue(entry.sleep) ? { sleep: cleanContextValue(entry.sleep) } : {}),
@@ -125,21 +132,6 @@ export const moodStorage = {
 
     await writeMap(map);
     return Object.values(map).sort((a, b) => (a.date < b.date ? 1 : -1));
-  },
-
-  async setNoteForDate(date: string, note: string): Promise<MoodEntry> {
-    const map = await readMap();
-    const existing = map[date];
-
-    const entry: MoodEntry = {
-      ...getBaseEntry(date, existing),
-      note,
-      updatedAt: now(),
-    };
-
-    map[date] = entry;
-    await writeMap(map);
-    return entry;
   },
 
   async setTagsForDate(date: string, tags: string[]): Promise<MoodEntry> {

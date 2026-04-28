@@ -7,6 +7,7 @@ import {
   getComboHighlights,
   getContextCoverage,
   getContextSignals,
+  getEntriesForMonth,
   getLongestMoodStreak,
   getMonthComparison,
   getMoodStreak,
@@ -62,6 +63,7 @@ type EvidenceCardData = {
   detail: string;
   tag: string;
   tone: "supportive" | "challenging";
+  confidence: string;
 };
 
 function SectionHeader({
@@ -120,36 +122,51 @@ function CompareCard({
   eyebrow,
   title,
   body,
+  confidence,
+  onPress,
 }: {
   eyebrow: string;
   title: string;
   body: string;
+  confidence?: string;
+  onPress?: (() => void) | null;
 }) {
   return (
-    <View style={styles.compareCard}>
+    <Pressable
+      disabled={!onPress}
+      onPress={onPress ?? undefined}
+      style={[styles.compareCard, onPress ? styles.compareCardPressable : null]}
+    >
       <Text style={styles.compareEyebrow}>{eyebrow}</Text>
+      {confidence ? <Text style={styles.confidenceBadge}>{confidence}</Text> : null}
       <Text style={styles.compareTitle}>{title}</Text>
       <Text style={styles.compareBody}>{body}</Text>
-    </View>
+
+      {onPress ? (
+        <View style={styles.compareLinkPill}>
+          <Text style={styles.compareLinkText}>View matching days</Text>
+        </View>
+      ) : null}
+    </Pressable>
   );
 }
 
 function StatCard({
   label,
   value,
-  note,
+  caption,
   compact,
 }: {
   label: string;
   value: string;
-  note?: string;
+  caption?: string;
   compact: boolean;
 }) {
   return (
     <View style={[styles.statCard, compact ? styles.halfCard : styles.fullCard]}>
       <Text style={styles.statLabel}>{label}</Text>
       <Text style={styles.statValue}>{value}</Text>
-      {note ? <Text style={styles.statNote}>{note}</Text> : null}
+      {caption ? <Text style={styles.statNote}>{caption}</Text> : null}
     </View>
   );
 }
@@ -182,6 +199,7 @@ function EvidenceCard({
   title,
   detail,
   tone,
+  confidence,
   onPress,
 }: EvidenceCardData & { onPress: () => void }) {
   return (
@@ -193,6 +211,7 @@ function EvidenceCard({
       ]}
     >
       <Text style={styles.evidenceLabel}>{label}</Text>
+      <Text style={styles.confidenceBadge}>{confidence}</Text>
       <Text style={styles.evidenceTitle}>{title}</Text>
       <Text style={styles.evidenceDetail}>{detail}</Text>
       <View style={styles.evidenceButton}>
@@ -206,11 +225,13 @@ function SignalCard({
   title,
   signal,
   coverage,
+  confidence,
   onPress,
 }: {
   title: string;
   signal: ContextSignal | null;
   coverage: ContextCoverage;
+  confidence?: string;
   onPress?: (() => void) | null;
 }) {
   const meterValue = getSignalMeterValue(signal);
@@ -227,6 +248,8 @@ function SignalCard({
         <Text style={styles.signalTitle}>{title}</Text>
         <Text style={styles.signalShift}>{shiftLabel}</Text>
       </View>
+
+      {confidence ? <Text style={styles.confidenceBadge}>{confidence}</Text> : null}
 
       <View style={styles.signalTrack}>
         <View style={styles.signalTrackMid} />
@@ -622,25 +645,33 @@ function buildEvidenceCards(args: {
 
   if (args.supportiveTag) {
     cards.push({
-      label: "Seems to help",
+      label: "Seems to help this month",
       title: `#${args.supportiveTag.tag} often showed up on better days.`,
       detail: `${args.supportiveTag.count} check-ins, about ${Math.abs(args.supportiveTag.deltaFromBaseline).toFixed(1)} points lighter than your usual baseline.`,
       tag: args.supportiveTag.tag,
       tone: "supportive",
+      confidence: getConfidenceLabel(args.supportiveTag.count),
     });
   }
 
   if (args.challengingTag) {
     cards.push({
-      label: "Seems harder",
+      label: "Seems harder this month",
       title: `#${args.challengingTag.tag} often showed up on tougher days.`,
       detail: `${args.challengingTag.count} check-ins, about ${Math.abs(args.challengingTag.deltaFromBaseline).toFixed(1)} points heavier than your usual baseline.`,
       tag: args.challengingTag.tag,
       tone: "challenging",
+      confidence: getConfidenceLabel(args.challengingTag.count),
     });
   }
 
   return cards;
+}
+
+function getConfidenceLabel(sampleCount: number) {
+  if (sampleCount >= 6) return "steadier pattern";
+  if (sampleCount >= 4) return "growing pattern";
+  return "early signal";
 }
 
 function getSignalMeterValue(signal: ContextSignal | null) {
@@ -695,6 +726,15 @@ function getContextDrilldownTarget(signal: ContextSignal | null): {
   return { key: signal.key, band: signal.delta >= 0 ? "high" : "low" };
 }
 
+function getSignalConfidenceLabel(signal: ContextSignal | null) {
+  if (!signal) return "early signal";
+  return getConfidenceLabel(Math.max(signal.lowCount, signal.highCount));
+}
+
+function getComparisonConfidenceLabel(currentCount: number, previousCount: number) {
+  return getConfidenceLabel(Math.min(currentCount, previousCount));
+}
+
 export default function InsightsScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
@@ -703,6 +743,10 @@ export default function InsightsScreen() {
   const thisMonth = useMemo(
     () => new Date(today.getFullYear(), today.getMonth(), 1),
     [today]
+  );
+  const currentMonthKey = useMemo(
+    () => `${thisMonth.getFullYear()}-${String(thisMonth.getMonth() + 1).padStart(2, "0")}`,
+    [thisMonth]
   );
   const { entries, map, isLoading } = useMoodEntries();
 
@@ -718,6 +762,10 @@ export default function InsightsScreen() {
   const mostCommonMood = useMemo(() => getMostCommonMood(entries), [entries]);
   const weekSummary = useMemo(() => getWeekSummary(map, today), [map, today]);
   const monthSummary = useMemo(() => getMonthSummary(map, thisMonth), [map, thisMonth]);
+  const currentMonthEntries = useMemo(
+    () => getEntriesForMonth(entries, thisMonth),
+    [entries, thisMonth]
+  );
   const topTags = useMemo(() => getTopTags(entries), [entries]);
   const hardDayTags = useMemo(
     () => getTopTagsForMoods(entries, ["sad", "anxious", "angry"]),
@@ -725,6 +773,14 @@ export default function InsightsScreen() {
   );
   const supportiveTags = useMemo(() => getTopSupportiveTags(entries), [entries]);
   const challengingTags = useMemo(() => getTopChallengingTags(entries), [entries]);
+  const monthSupportiveTags = useMemo(
+    () => getTopSupportiveTags(currentMonthEntries),
+    [currentMonthEntries]
+  );
+  const monthChallengingTags = useMemo(
+    () => getTopChallengingTags(currentMonthEntries),
+    [currentMonthEntries]
+  );
   const weekdayInsights = useMemo(() => getWeekdayInsights(entries), [entries]);
   const comparison = useMemo(() => getWeekComparison(entries, today), [entries, today]);
   const monthComparison = useMemo(
@@ -789,10 +845,10 @@ export default function InsightsScreen() {
   const evidenceCards = useMemo(
     () =>
       buildEvidenceCards({
-        supportiveTag: supportiveTags[0],
-        challengingTag: challengingTags[0],
+        supportiveTag: monthSupportiveTags[0],
+        challengingTag: monthChallengingTags[0],
       }),
-    [supportiveTags, challengingTags]
+    [monthSupportiveTags, monthChallengingTags]
   );
   const sleepTarget = useMemo(() => getContextDrilldownTarget(sleepSignal), [sleepSignal]);
   const stressTarget = useMemo(() => getContextDrilldownTarget(stressSignal), [stressSignal]);
@@ -838,25 +894,25 @@ export default function InsightsScreen() {
               <StatCard
                 label="This week"
                 value={`${weekCount}`}
-                note="days logged"
+                caption="days logged"
                 compact={compactCards}
               />
               <StatCard
                 label="This month"
                 value={`${monthCount}`}
-                note="days logged"
+                caption="days logged"
                 compact={compactCards}
               />
               <StatCard
                 label="Streak"
                 value={`${currentStreak}`}
-                note="current run"
+                caption="current run"
                 compact={compactCards}
               />
               <StatCard
                 label="Best run"
                 value={`${longestStreak}`}
-                note="longest streak"
+                caption="longest streak"
                 compact={compactCards}
               />
             </View>
@@ -865,6 +921,13 @@ export default function InsightsScreen() {
               eyebrow="Month to month"
               title={monthStory.title}
               body={monthStory.body}
+              confidence={getComparisonConfidenceLabel(monthComparison.currentCount, monthComparison.previousCount)}
+              onPress={() =>
+                router.push({
+                  pathname: "/history",
+                  params: { month: currentMonthKey },
+                })
+              }
             />
           </View>
 
@@ -883,7 +946,7 @@ export default function InsightsScreen() {
                     onPress={() =>
                       router.push({
                         pathname: "/history",
-                        params: { tag: card.tag },
+                        params: { tag: card.tag, month: currentMonthKey },
                       })
                     }
                   />
@@ -918,6 +981,7 @@ export default function InsightsScreen() {
                 title="Sleep"
                 signal={sleepSignal}
                 coverage={sleepCoverage}
+                confidence={getSignalConfidenceLabel(sleepSignal)}
                 onPress={
                   sleepTarget
                     ? () =>
@@ -935,6 +999,7 @@ export default function InsightsScreen() {
                 title="Stress"
                 signal={stressSignal}
                 coverage={stressCoverage}
+                confidence={getSignalConfidenceLabel(stressSignal)}
                 onPress={
                   stressTarget
                     ? () =>
@@ -952,6 +1017,7 @@ export default function InsightsScreen() {
                 title="Energy"
                 signal={energySignal}
                 coverage={energyCoverage}
+                confidence={getSignalConfidenceLabel(energySignal)}
                 onPress={
                   energyTarget
                     ? () =>
@@ -1114,6 +1180,9 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: 6,
   },
+  compareCardPressable: {
+    borderColor: "#EBCB96",
+  },
   compareEyebrow: {
     ...typography.caption,
     color: "#9A5A23",
@@ -1131,6 +1200,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: "#8E5D2C",
+  },
+  compareLinkPill: {
+    alignSelf: "flex-start",
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.78)",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  compareLinkText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#9A3412",
   },
   grid: {
     flexDirection: "row",
@@ -1224,6 +1305,18 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.6,
     fontWeight: "700",
+    color: "#5F6B7A",
+  },
+  confidenceBadge: {
+    alignSelf: "flex-start",
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.78)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    fontSize: 11,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
     color: "#5F6B7A",
   },
   evidenceTitle: {

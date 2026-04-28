@@ -77,8 +77,6 @@ function normalizeEntry(value: unknown): MoodEntry | null {
     typeof value.updatedAt === "number" && Number.isFinite(value.updatedAt)
       ? value.updatedAt
       : createdAt;
-  const note =
-    typeof value.note === "string" && value.note.trim().length > 0 ? value.note : undefined;
   const tags = normalizeTags(value.tags);
   const energy = normalizeContextScale(value.energy);
   const stress = normalizeContextScale(value.stress);
@@ -89,7 +87,6 @@ function normalizeEntry(value: unknown): MoodEntry | null {
     mood,
     createdAt,
     updatedAt,
-    ...(note ? { note } : {}),
     ...(tags ? { tags } : {}),
     ...(energy ? { energy } : {}),
     ...(stress ? { stress } : {}),

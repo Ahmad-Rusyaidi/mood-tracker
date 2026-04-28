@@ -8,7 +8,8 @@ import {
   exportBackupPayloadAsync,
   importBackupPayloadAsync,
 } from "@/utils/backup";
-import { buildReadableSummary } from "@/utils/shareSummary";
+import { buildReadableSummary, type SummaryRange } from "@/utils/shareSummary";
+import * as Clipboard from "expo-clipboard";
 import {
   REMINDER_WEEKDAY_OPTIONS,
   cancelDailyMoodReminderAsync,
@@ -32,6 +33,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const REMINDER_PRESET_TIMES = ["18:00", "20:00", "22:00"] as const;
+const SUMMARY_RANGE_OPTIONS: { value: SummaryRange; label: string }[] = [
+  { value: "last7", label: "Last 7 days" },
+  { value: "thisMonth", label: "This month" },
+  { value: "last3Months", label: "Last 3 months" },
+];
 
 function formatSelectedWeekdays(weekdays: ReminderWeekday[]) {
   if (weekdays.length === REMINDER_WEEKDAY_OPTIONS.length) {
@@ -108,10 +114,16 @@ export default function SettingsScreen() {
   } = useAppSettings();
   const [tagDraft, setTagDraft] = useState("");
   const [timeDraft, setTimeDraft] = useState(settings.reminders.time);
+  const [summaryRange, setSummaryRange] = useState<SummaryRange>("thisMonth");
 
   useEffect(() => {
     setTimeDraft(settings.reminders.time);
   }, [settings.reminders.time]);
+
+  const summaryPreview = useMemo(
+    () => buildReadableSummary(entries, new Date(), summaryRange),
+    [entries, summaryRange]
+  );
 
   const reminderSummary = useMemo(() => {
     const daySummary = formatSelectedWeekdays(settings.reminders.weekdays);
@@ -252,7 +264,7 @@ export default function SettingsScreen() {
       intermediates: true,
       overwrite: true,
     });
-    summaryFile.write(buildReadableSummary(entries));
+    summaryFile.write(buildReadableSummary(entries, new Date(), summaryRange));
 
     const canShare = await Sharing.isAvailableAsync();
     if (canShare) {
@@ -264,6 +276,16 @@ export default function SettingsScreen() {
     }
 
     Alert.alert("Summary saved", `Summary file created:\n${summaryFile.uri}`);
+  };
+
+  const handleCopySummary = async () => {
+    if (entries.length === 0) {
+      Alert.alert("No summary yet", "Add a few check-ins first so there is something meaningful to copy.");
+      return;
+    }
+
+    await Clipboard.setStringAsync(summaryPreview);
+    Alert.alert("Summary copied", "Your readable summary is now on the clipboard.");
   };
 
   const pickBackupFileText = async () => {
@@ -519,13 +541,42 @@ export default function SettingsScreen() {
           subtitle="Export a backup file, share a readable summary, or restore your data later."
         >
           <View style={styles.card}>
+            <View style={styles.summaryPreviewCard}>
+              <Text style={styles.summaryPreviewTitle}>Readable summary preview</Text>
+              <Text style={styles.summaryPreviewBody}>
+                {entries.length > 0
+                  ? summaryPreview
+                  : "Add a few check-ins first and your summary preview will appear here."}
+              </Text>
+            </View>
+
             <Pressable onPress={() => void handleExport()} style={styles.secondaryButton}>
               <Text style={styles.secondaryButtonText}>Export backup file</Text>
             </Pressable>
 
-            <Pressable onPress={() => void handleShareSummary()} style={styles.secondaryButton}>
-              <Text style={styles.secondaryButtonText}>Share readable summary</Text>
-            </Pressable>
+            <View style={styles.tagGroup}>
+              <Text style={styles.groupTitle}>Summary range</Text>
+              <View style={styles.timeRow}>
+                {SUMMARY_RANGE_OPTIONS.map((option) => (
+                  <PillButton
+                    key={option.value}
+                    label={option.label}
+                    active={summaryRange === option.value}
+                    onPress={() => setSummaryRange(option.value)}
+                  />
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.buttonRow}>
+              <Pressable onPress={() => void handleShareSummary()} style={styles.secondaryButtonCompact}>
+                <Text style={styles.secondaryButtonText}>Share readable summary</Text>
+              </Pressable>
+
+              <Pressable onPress={() => void handleCopySummary()} style={styles.secondaryButtonCompact}>
+                <Text style={styles.secondaryButtonText}>Copy summary</Text>
+              </Pressable>
+            </View>
 
             <View style={styles.backupInfoCard}>
               <Text style={styles.backupInfoTitle}>How it works</Text>
@@ -821,6 +872,24 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.mutedText,
     lineHeight: 22,
+  },
+  summaryPreviewCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#E3E8F5",
+    backgroundColor: "#FBFCFF",
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  summaryPreviewTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: colors.text,
+  },
+  summaryPreviewBody: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: "#4B5563",
   },
   buttonRow: {
     flexDirection: "row",

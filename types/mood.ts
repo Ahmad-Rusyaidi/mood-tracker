@@ -12,9 +12,7 @@ export type MoodEntry = {
   createdAt: number; // epoch ms
   updatedAt: number; // epoch ms
 
-  // NEW
   tags?: string[]; // e.g. ["work","sleep","exercise"]
-  note?: string; // short journal
   energy?: ContextScale;
   stress?: ContextScale;
   sleep?: ContextScale;

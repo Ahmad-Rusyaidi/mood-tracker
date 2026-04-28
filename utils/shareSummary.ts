@@ -10,6 +10,8 @@ import {
   getWeekComparison,
 } from "@/utils/moodStats";
 
+export type SummaryRange = "last7" | "thisMonth" | "last3Months";
+
 function formatMonthLabel(date: Date) {
   return date.toLocaleDateString(undefined, {
     month: "long",
@@ -31,22 +33,53 @@ function formatMoodLabel(mood: ReturnType<typeof getMostCommonMood>["mood"]) {
   return mood;
 }
 
-export function buildReadableSummary(entries: MoodEntry[], today = new Date()) {
+function startOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function getEntriesForRecentDays(entries: MoodEntry[], today: Date, days: number) {
+  const end = startOfDay(today);
+  const start = new Date(end);
+  start.setDate(end.getDate() - (days - 1));
+
+  return entries.filter((entry) => {
+    const [year, month, day] = entry.date.split("-").map(Number);
+    const date = new Date(year ?? 0, (month ?? 1) - 1, day ?? 1);
+    return date >= start && date <= end;
+  });
+}
+
+function getSummaryHeader(range: SummaryRange, today: Date) {
+  if (range === "last7") return "Mood tracker summary: last 7 days";
+  if (range === "last3Months") return "Mood tracker summary: last 3 months";
+  return `Mood tracker summary: ${formatMonthLabel(new Date(today.getFullYear(), today.getMonth(), 1))}`;
+}
+
+export function buildReadableSummary(
+  entries: MoodEntry[],
+  today = new Date(),
+  range: SummaryRange = "thisMonth"
+) {
   const thisMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-  const weekEntries = getEntriesForWeek(entries, today);
-  const monthEntries = getEntriesForMonth(entries, thisMonth);
+  const weekEntries = range === "last7" ? getEntriesForRecentDays(entries, today, 7) : getEntriesForWeek(entries, today);
+  const monthEntries =
+    range === "last3Months"
+      ? getEntriesForRecentDays(entries, today, 90)
+      : range === "last7"
+        ? getEntriesForRecentDays(entries, today, 7)
+        : getEntriesForMonth(entries, thisMonth);
   const weekComparison = getWeekComparison(entries, today);
   const monthComparison = getMonthComparison(entries, thisMonth);
-  const supportiveTag = getTopSupportiveTags(entries, 1)[0];
-  const challengingTag = getTopChallengingTags(entries, 1)[0];
-  const strongestSignal = getContextSignals(entries)[0] ?? null;
+  const supportiveTag = getTopSupportiveTags(monthEntries, 1)[0];
+  const challengingTag = getTopChallengingTags(monthEntries, 1)[0];
+  const strongestSignal = getContextSignals(monthEntries)[0] ?? null;
   const commonMood = getMostCommonMood(monthEntries);
 
   const weekShift = formatShift(weekComparison.delta);
   const monthShift = formatShift(monthComparison.delta);
 
   const lines = [
-    "Mood tracker summary",
+    getSummaryHeader(range, today),
     `Created ${today.toLocaleDateString(undefined, {
       year: "numeric",
       month: "long",
@@ -58,11 +91,13 @@ export function buildReadableSummary(entries: MoodEntry[], today = new Date()) {
       ? `Compared with last week, things felt ${weekShift}.`
       : "There is not quite enough week-over-week data for a strong comparison yet.",
     "",
-    `${formatMonthLabel(thisMonth)}: ${monthEntries.length} check-in${monthEntries.length === 1 ? "" : "s"}.`,
-    monthShift && monthComparison.previousCount >= 3
-      ? `Compared with last month, things felt ${monthShift}.`
-      : "There is not quite enough month-over-month data for a strong comparison yet.",
-    `Most common mood this month: ${formatMoodLabel(commonMood.mood)}.`,
+    `${range === "last3Months" ? "Last 3 months" : range === "last7" ? "Last 7 days" : formatMonthLabel(thisMonth)}: ${monthEntries.length} check-in${monthEntries.length === 1 ? "" : "s"}.`,
+    range === "thisMonth"
+      ? monthShift && monthComparison.previousCount >= 3
+        ? `Compared with last month, things felt ${monthShift}.`
+        : "There is not quite enough month-over-month data for a strong comparison yet."
+      : "This summary focuses more on recent patterns than month-over-month comparison.",
+    `Most common mood in this range: ${formatMoodLabel(commonMood.mood)}.`,
   ];
 
   if (supportiveTag || challengingTag || strongestSignal) {

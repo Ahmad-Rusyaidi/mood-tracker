@@ -19,6 +19,10 @@ function addDays(date: Date, delta: number) {
   return d;
 }
 
+function startOfWeek(date: Date) {
+  return addDays(date, -date.getDay());
+}
+
 function toISODateLocal(d: Date) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -108,17 +112,22 @@ export function WeekCalendar({
   anchorDate,
   selectedDate,
   entriesMap,
+  onNavigateWeek,
+  onJumpToToday,
   onSelectDate,
 }: {
   anchorDate: Date;
   selectedDate: string;
   entriesMap: Record<string, MoodEntry>;
+  onNavigateWeek: (delta: number) => void;
+  onJumpToToday: () => void;
   onSelectDate: (date: string) => void;
 }) {
   const router = useRouter();
+  const today = useMemo(() => new Date(), []);
   const days = useMemo(() => {
     const base = new Date(anchorDate);
-    const start = addDays(base, -base.getDay());
+    const start = startOfWeek(base);
 
     return Array.from({ length: 7 }).map((_, i) => {
       const d = addDays(start, i);
@@ -151,6 +160,8 @@ export function WeekCalendar({
   );
 
   const allDaysLogged = loggedDays === 7;
+  const isCurrentWeek =
+    toISODateLocal(startOfWeek(anchorDate)) === toISODateLocal(startOfWeek(today));
   const headline = getHeadline(loggedDays, comparison.delta, allDaysLogged);
   const reflectionPrompt = getReflectionPrompt(weekEntries, loggedDays, allDaysLogged);
   const weekRange = formatWeekRange(
@@ -160,6 +171,30 @@ export function WeekCalendar({
 
   return (
     <View style={styles.container}>
+      <View style={styles.navRow}>
+        <Pressable onPress={() => onNavigateWeek(-1)} style={styles.navButton}>
+          <Text style={styles.navButtonText}>Previous week</Text>
+        </Pressable>
+
+        <Pressable
+          onPress={onJumpToToday}
+          style={[styles.navButton, isCurrentWeek ? styles.navButtonMuted : styles.navButtonToday]}
+        >
+          <Text
+            style={[
+              styles.navButtonText,
+              isCurrentWeek ? styles.navButtonTextMuted : styles.navButtonTextToday,
+            ]}
+          >
+            This week
+          </Text>
+        </Pressable>
+
+        <Pressable onPress={() => onNavigateWeek(1)} style={styles.navButton}>
+          <Text style={styles.navButtonText}>Next week</Text>
+        </Pressable>
+      </View>
+
       <Text style={styles.rangeText}>{weekRange}</Text>
 
       <View style={styles.weekRow}>

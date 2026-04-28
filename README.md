@@ -10,7 +10,7 @@ This app is meant to be a gentle daily mood companion that helps users:
 
 - capture feelings quickly
 - reflect clearly on past entries
-- learn patterns from moods, tags, notes, and routines
+- learn patterns from moods, tags, signals, and routines
 
 The goal is not to become a therapy replacement or a heavy quantified-self dashboard. The product should stay lightweight, supportive, private, and insightful.
 
@@ -61,7 +61,6 @@ If the app only collects moods and never explains anything back, it will feel in
 Most useful:
 
 - mood
-- note
 - tags / triggers
 - sleep
 - energy
@@ -94,7 +93,6 @@ The app already has a solid core and is beyond starter level in the main mood fl
 
 - daily mood logging
 - single entry per date
-- notes
 - preset tags
 - custom tags
 - on-demand tag creation from Home during check-in
@@ -162,7 +160,7 @@ The split is intentional:
 
 ### 1. Capture Fast
 
-The app should let users log a mood, a few tags, and a short note in under 30 seconds.
+The app should let users log a mood, a few tags, and a few quick signals in under 30 seconds.
 
 ### 2. Reflect Clearly
 
@@ -213,7 +211,7 @@ These features best match the product direction:
 
 | Feature | Why users care | Product impact | Build difficulty | Priority |
 |---|---|---:|---:|---:|
-| `Journal timeline` | Lets users review past moods and notes in one place | High | Low-Medium | `P1` |
+| `Journal timeline` | Lets users review past moods, tags, and signals in one place | High | Low-Medium | `P1` |
 | `Insights tab` | Turns raw entries into trends and patterns | High | Medium | `P1` |
 | `Custom tags` | People want to track their own real triggers | High | Medium | `P1` |
 | `Weekly recap` | Gives users a simple reason to come back | High | Medium | `P1` |
@@ -255,7 +253,7 @@ Goal: make past entries useful.
 
 - build a Journal tab
 - show entries in reverse chronological order
-- display date, mood, tags, and short note preview
+- display date, mood, tags, and signal preview
 - add simple filters by mood, tag, and month
 - let users tap an entry to jump back to that day
 

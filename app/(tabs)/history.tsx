@@ -7,6 +7,7 @@ import { moodToEmoji } from "@/utils/moodUi";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useDeferredValue, useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   FlatList,
   Pressable,
   ScrollView,
@@ -75,7 +76,6 @@ function matchesSearch(entry: MoodEntry, query: string) {
     entry.date,
     entry.mood,
     formatEntryDate(entry.date),
-    entry.note ?? "",
     ...(entry.tags ?? []),
   ];
 
@@ -93,10 +93,7 @@ function isMoodParam(value: string): value is Mood | "all" {
   );
 }
 
-function parseContextFilter(
-  key?: string,
-  band?: string
-): ContextFilter {
+function parseContextFilter(key?: string, band?: string): ContextFilter {
   if (
     (key === "sleep" || key === "stress" || key === "energy") &&
     (band === "low" || band === "high")
@@ -114,6 +111,16 @@ function matchesContextFilter(entry: MoodEntry, filter: ContextFilter) {
   return matchesContextBand(entry, key, band);
 }
 
+function getContextPreview(entry: MoodEntry) {
+  const parts: string[] = [];
+
+  if (entry.energy != null) parts.push(`Energy ${entry.energy}/5`);
+  if (entry.stress != null) parts.push(`Stress ${entry.stress}/5`);
+  if (entry.sleep != null) parts.push(`Sleep ${entry.sleep}/5`);
+
+  return parts.length > 0 ? parts.join(" | ") : "No extra signals yet";
+}
+
 function FilterChip({
   label,
   active,
@@ -128,7 +135,12 @@ function FilterChip({
       onPress={onPress}
       style={[styles.chip, active ? styles.chipActive : styles.chipInactive]}
     >
-      <Text style={[styles.chipText, active ? styles.chipTextActive : styles.chipTextInactive]}>
+      <Text
+        style={[
+          styles.chipText,
+          active ? styles.chipTextActive : styles.chipTextInactive,
+        ]}
+      >
         {label}
       </Text>
     </Pressable>
@@ -145,7 +157,11 @@ function FilterSection({
   return (
     <View style={styles.filterSection}>
       <Text style={styles.filterTitle}>{title}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.chipRow}
+      >
         {children}
       </ScrollView>
     </View>
@@ -154,20 +170,24 @@ function FilterSection({
 
 function EntryCard({
   entry,
-  onPress,
+  onEdit,
+  onDelete,
 }: {
   entry: MoodEntry;
-  onPress: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }) {
-  const previewNote = entry.note?.trim() ? truncate(entry.note.trim(), 120) : "No note yet";
-  const tags = entry.tags?.length ? entry.tags.map((tag) => `#${tag}`).join(" ") : "No tags";
+  const tags = entry.tags?.length
+    ? entry.tags.map((tag) => `#${tag}`).join(" ")
+    : "No tags";
+  const contextPreview = truncate(getContextPreview(entry), 120);
 
   return (
-    <Pressable onPress={onPress} style={styles.entryCard}>
+    <View style={styles.entryCard}>
       <View style={styles.entryTopRow}>
         <View style={styles.entryDateWrap}>
           <Text style={styles.entryDate}>{formatEntryDate(entry.date)}</Text>
-          <Text style={styles.entryMeta}>Tap to open this day</Text>
+          <Text style={styles.entryMeta}>Open or remove this day</Text>
         </View>
 
         <View style={styles.entryMoodBadge}>
@@ -176,9 +196,19 @@ function EntryCard({
         </View>
       </View>
 
-      <Text style={styles.entryNote}>{previewNote}</Text>
       <Text style={styles.entryTags}>{tags}</Text>
-    </Pressable>
+      <Text style={styles.entryContext}>{contextPreview}</Text>
+
+      <View style={styles.entryActionsRow}>
+        <Pressable onPress={onEdit} style={styles.entryActionPrimary}>
+          <Text style={styles.entryActionPrimaryText}>Edit day</Text>
+        </Pressable>
+
+        <Pressable onPress={onDelete} style={styles.entryActionDanger}>
+          <Text style={styles.entryActionDangerText}>Delete</Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
@@ -192,11 +222,12 @@ export default function JournalScreen() {
     contextKey?: MoodContextKey;
     contextBand?: ContextBand;
   }>();
-  const { entries, isLoading } = useMoodEntries();
+  const { entries, isLoading, removeByDate } = useMoodEntries();
   const [selectedMood, setSelectedMood] = useState<MoodFilter>("all");
   const [selectedMonth, setSelectedMonth] = useState<MonthFilter>("all");
   const [selectedTag, setSelectedTag] = useState<string | "all">("all");
-  const [selectedContext, setSelectedContext] = useState<ContextFilter>("all");
+  const [selectedContext, setSelectedContext] =
+    useState<ContextFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const deferredSearchQuery = useDeferredValue(searchQuery);
 
@@ -205,15 +236,14 @@ export default function JournalScreen() {
   }, [entries]);
 
   const tagOptions = useMemo(() => {
-    const pool = selectedMonth === "all"
-      ? entries
-      : entries.filter((entry) => getMonthKey(entry.date) === selectedMonth);
+    const pool =
+      selectedMonth === "all"
+        ? entries
+        : entries.filter((entry) => getMonthKey(entry.date) === selectedMonth);
 
-    return Array.from(
-      new Set(
-        pool.flatMap((entry) => entry.tags ?? [])
-      )
-    ).sort((a, b) => a.localeCompare(b));
+    return Array.from(new Set(pool.flatMap((entry) => entry.tags ?? []))).sort(
+      (a, b) => a.localeCompare(b)
+    );
   }, [entries, selectedMonth]);
 
   useEffect(() => {
@@ -240,20 +270,41 @@ export default function JournalScreen() {
     }
 
     setSelectedContext(parseContextFilter(params.contextKey, params.contextBand));
-  }, [params.tag, params.mood, params.month, params.q, params.contextKey, params.contextBand]);
+  }, [
+    params.tag,
+    params.mood,
+    params.month,
+    params.q,
+    params.contextKey,
+    params.contextBand,
+  ]);
 
   const filteredEntries = useMemo(() => {
     const normalizedQuery = normalizeQuery(deferredSearchQuery);
 
     return entries.filter((entry) => {
       if (selectedMood !== "all" && entry.mood !== selectedMood) return false;
-      if (selectedMonth !== "all" && getMonthKey(entry.date) !== selectedMonth) return false;
-      if (selectedTag !== "all" && !(entry.tags ?? []).includes(selectedTag)) return false;
+      if (
+        selectedMonth !== "all" &&
+        getMonthKey(entry.date) !== selectedMonth
+      ) {
+        return false;
+      }
+      if (selectedTag !== "all" && !(entry.tags ?? []).includes(selectedTag)) {
+        return false;
+      }
       if (!matchesContextFilter(entry, selectedContext)) return false;
       if (!matchesSearch(entry, normalizedQuery)) return false;
       return true;
     });
-  }, [entries, selectedMood, selectedMonth, selectedTag, selectedContext, deferredSearchQuery]);
+  }, [
+    entries,
+    selectedMood,
+    selectedMonth,
+    selectedTag,
+    selectedContext,
+    deferredSearchQuery,
+  ]);
 
   const hasEntries = entries.length > 0;
   const hasFilters =
@@ -268,13 +319,14 @@ export default function JournalScreen() {
     <View style={styles.headerWrap}>
       <Text style={styles.title}>Journal</Text>
       <Text style={styles.subtitle}>
-        Browse your past check-ins, filter them, and reopen the days behind each pattern.
+        Browse your past check-ins, filter them, and reopen the days behind each
+        pattern.
       </Text>
 
       <TextInput
         value={searchQuery}
         onChangeText={setSearchQuery}
-        placeholder="Search notes, tags, moods, or dates"
+        placeholder="Search tags, moods, or dates"
         placeholderTextColor="rgba(17,24,39,0.35)"
         style={styles.searchInput}
         autoCorrect={false}
@@ -283,19 +335,29 @@ export default function JournalScreen() {
       />
 
       <FilterSection title="Mood">
-        <FilterChip label="All" active={selectedMood === "all"} onPress={() => setSelectedMood("all")} />
-        {(["happy", "neutral", "sad", "angry", "anxious"] as const).map((mood) => (
-          <FilterChip
-            key={mood}
-            label={`${moodToEmoji[mood]} ${mood}`}
-            active={selectedMood === mood}
-            onPress={() => setSelectedMood(mood)}
-          />
-        ))}
+        <FilterChip
+          label="All"
+          active={selectedMood === "all"}
+          onPress={() => setSelectedMood("all")}
+        />
+        {(["happy", "neutral", "sad", "angry", "anxious"] as const).map(
+          (mood) => (
+            <FilterChip
+              key={mood}
+              label={`${moodToEmoji[mood]} ${mood}`}
+              active={selectedMood === mood}
+              onPress={() => setSelectedMood(mood)}
+            />
+          )
+        )}
       </FilterSection>
 
       <FilterSection title="Month">
-        <FilterChip label="All" active={selectedMonth === "all"} onPress={() => setSelectedMonth("all")} />
+        <FilterChip
+          label="All"
+          active={selectedMonth === "all"}
+          onPress={() => setSelectedMonth("all")}
+        />
         {monthOptions.map((monthKey) => (
           <FilterChip
             key={monthKey}
@@ -307,7 +369,11 @@ export default function JournalScreen() {
       </FilterSection>
 
       <FilterSection title="Tag">
-        <FilterChip label="All" active={selectedTag === "all"} onPress={() => setSelectedTag("all")} />
+        <FilterChip
+          label="All"
+          active={selectedTag === "all"}
+          onPress={() => setSelectedTag("all")}
+        />
         {tagOptions.map((tag) => (
           <FilterChip
             key={tag}
@@ -341,13 +407,16 @@ export default function JournalScreen() {
       {isLoading ? (
         <View style={styles.centerState}>
           <Text style={styles.stateTitle}>Loading your history...</Text>
-          <Text style={styles.stateText}>Pulling together your saved check-ins.</Text>
+          <Text style={styles.stateText}>
+            Pulling together your saved check-ins.
+          </Text>
         </View>
       ) : !hasEntries ? (
         <View style={styles.centerState}>
           <Text style={styles.stateTitle}>No entries yet</Text>
           <Text style={styles.stateText}>
-            Start logging moods on the Home tab and your reflections will appear here.
+            Start logging moods on the Home tab and your reflections will appear
+            here.
           </Text>
         </View>
       ) : (
@@ -360,11 +429,27 @@ export default function JournalScreen() {
           renderItem={({ item }) => (
             <EntryCard
               entry={item}
-              onPress={() =>
+              onEdit={() =>
                 router.push({
                   pathname: "/",
                   params: { date: item.date, view: "day" },
                 })
+              }
+              onDelete={() =>
+                Alert.alert(
+                  "Delete this entry?",
+                  `This will remove the check-in for ${formatEntryDate(item.date)}.`,
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Delete",
+                      style: "destructive",
+                      onPress: () => {
+                        void removeByDate(item.date);
+                      },
+                    },
+                  ]
+                )
               }
             />
           )}
@@ -519,15 +604,49 @@ const styles = StyleSheet.create({
     color: colors.text,
     textTransform: "capitalize",
   },
-  entryNote: {
-    ...typography.body,
-    color: colors.text,
-    lineHeight: 22,
-  },
   entryTags: {
     ...typography.caption,
     color: "#4B5563",
     lineHeight: 18,
+  },
+  entryContext: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.mutedText,
+  },
+  entryActionsRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  entryActionPrimary: {
+    flex: 1,
+    borderRadius: 999,
+    backgroundColor: "#EEF2FF",
+    borderWidth: 1,
+    borderColor: "#D6E0FF",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  entryActionPrimaryText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: colors.text,
+  },
+  entryActionDanger: {
+    borderRadius: 999,
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  entryActionDangerText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#991B1B",
   },
   centerState: {
     flex: 1,
