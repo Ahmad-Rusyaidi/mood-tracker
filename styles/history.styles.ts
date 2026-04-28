@@ -1,0 +1,212 @@
+import { colors, radius, spacing, typography } from "@/styles";
+import { StyleSheet } from "react-native";
+
+export const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  listContent: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xl,
+    gap: spacing.sm,
+  },
+  headerWrap: {
+    gap: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  title: {
+    ...typography.title,
+    color: colors.text,
+  },
+  subtitle: {
+    ...typography.body,
+    color: colors.mutedText,
+    lineHeight: 22,
+  },
+  resultCount: {
+    ...typography.caption,
+    color: colors.mutedText,
+    marginTop: -2,
+  },
+  filterSection: {
+    gap: spacing.sm,
+  },
+  searchInput: {
+    minHeight: 46,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "#F8FAFF",
+    paddingHorizontal: 14,
+    fontSize: 14,
+    color: colors.text,
+  },
+  filterTitle: {
+    ...typography.subtitle,
+    color: colors.text,
+  },
+  chipRow: {
+    gap: spacing.sm,
+    paddingRight: spacing.md,
+  },
+  chip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  chipActive: {
+    backgroundColor: "#111827",
+    borderColor: "#111827",
+  },
+  chipInactive: {
+    backgroundColor: colors.card,
+    borderColor: colors.border,
+  },
+  chipText: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  chipTextActive: {
+    color: "#FFFFFF",
+  },
+  chipTextInactive: {
+    color: colors.text,
+  },
+  entryCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: spacing.sm,
+    shadowColor: "#111827",
+    shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 16,
+    elevation: 2,
+  },
+  entryTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: spacing.sm,
+  },
+  entryDateWrap: {
+    flex: 1,
+    gap: 4,
+  },
+  entryDate: {
+    ...typography.subtitle,
+    color: colors.text,
+  },
+  entryMeta: {
+    ...typography.caption,
+    color: colors.mutedText,
+  },
+  entryMoodBadge: {
+    minWidth: 88,
+    borderRadius: 14,
+    backgroundColor: "#F3F4F6",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    alignItems: "center",
+    gap: 2,
+  },
+  entryMoodEmoji: {
+    fontSize: 20,
+  },
+  entryMoodLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.text,
+    textTransform: "capitalize",
+  },
+  entryTags: {
+    ...typography.caption,
+    color: "#4B5563",
+    lineHeight: 18,
+  },
+  entryContext: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.mutedText,
+  },
+  entryActionsRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  entryActionPrimary: {
+    flex: 1,
+    borderRadius: 999,
+    backgroundColor: "#EEF2FF",
+    borderWidth: 1,
+    borderColor: "#D6E0FF",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  entryActionPrimaryText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: colors.text,
+  },
+  entryActionDanger: {
+    borderRadius: 999,
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  entryActionDangerText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#991B1B",
+  },
+  centerState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
+  },
+  stateTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: colors.text,
+    textAlign: "center",
+  },
+  stateText: {
+    ...typography.body,
+    color: colors.mutedText,
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  emptyResults: {
+    marginTop: spacing.md,
+    padding: spacing.lg,
+    borderRadius: radius.lg,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: spacing.sm,
+    alignItems: "center",
+  },
+  resetButton: {
+    marginTop: spacing.xs,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "#111827",
+  },
+  resetButtonText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+});
