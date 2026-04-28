@@ -1,0 +1,287 @@
+import { colors, radius, spacing, typography } from "@/styles";
+import { StyleSheet } from "react-native";
+
+export const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  scroll: {
+    flex: 1,
+  },
+  content: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xl,
+    gap: spacing.lg,
+  },
+  hero: {
+    gap: spacing.sm,
+  },
+  title: {
+    ...typography.title,
+    color: colors.text,
+  },
+  subtitle: {
+    ...typography.body,
+    color: colors.mutedText,
+    lineHeight: 22,
+  },
+  section: {
+    gap: spacing.md,
+  },
+  sectionHeader: {
+    gap: 4,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: colors.text,
+  },
+  sectionSubtitle: {
+    ...typography.body,
+    color: colors.mutedText,
+    lineHeight: 22,
+  },
+  card: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    gap: spacing.md,
+  },
+  tagGroup: {
+    gap: spacing.sm,
+  },
+  groupTitle: {
+    ...typography.caption,
+    color: colors.mutedText,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  composerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  input: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "#F8FAFF",
+    paddingHorizontal: 14,
+    fontSize: 14,
+  },
+  timeInput: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "#F8FAFF",
+    paddingHorizontal: 14,
+    fontSize: 15,
+    color: colors.text,
+  },
+  primaryButton: {
+    borderRadius: 999,
+    backgroundColor: "#111827",
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+  },
+  primaryButtonText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  tagWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
+  removableTag: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#D6E0FF",
+    backgroundColor: "#EEF2FF",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 3,
+  },
+  defaultTag: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    backgroundColor: "#F9FAFB",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  defaultTagText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.text,
+  },
+  removableTagText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: colors.text,
+  },
+  removableTagX: {
+    fontSize: 11,
+    color: colors.mutedText,
+  },
+  switchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
+  },
+  switchTextWrap: {
+    flex: 1,
+    gap: 4,
+  },
+  switchTitle: {
+    ...typography.subtitle,
+    color: colors.text,
+  },
+  switchSubtitle: {
+    ...typography.caption,
+    color: colors.mutedText,
+    lineHeight: 18,
+  },
+  timeRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
+  pillButton: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  pillButtonActive: {
+    backgroundColor: "#111827",
+    borderColor: "#111827",
+  },
+  pillButtonInactive: {
+    backgroundColor: colors.card,
+    borderColor: colors.border,
+  },
+  pillButtonText: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  pillButtonTextActive: {
+    color: "#FFFFFF",
+  },
+  pillButtonTextInactive: {
+    color: colors.text,
+  },
+  secondaryButton: {
+    borderRadius: 999,
+    backgroundColor: "#EEF2FF",
+    borderWidth: 1,
+    borderColor: "#D6E0FF",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  secondaryButtonCompact: {
+    flex: 1,
+    borderRadius: 16,
+    backgroundColor: "#EEF2FF",
+    borderWidth: 1,
+    borderColor: "#D6E0FF",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  secondaryButtonText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: colors.text,
+  },
+  dangerButton: {
+    borderRadius: 999,
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  dangerButtonCompact: {
+    flex: 1,
+    borderRadius: 16,
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  dangerButtonText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#991B1B",
+  },
+  backupInfoCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#DCE5FA",
+    backgroundColor: "#F9FBFF",
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
+  backupInfoTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: colors.text,
+  },
+  backupInfoBody: {
+    ...typography.body,
+    color: colors.mutedText,
+    lineHeight: 22,
+  },
+  summaryPreviewCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#E3E8F5",
+    backgroundColor: "#FBFCFF",
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  summaryPreviewTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: colors.text,
+  },
+  summaryPreviewBody: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: "#4B5563",
+  },
+  buttonRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  helperText: {
+    ...typography.caption,
+    color: colors.mutedText,
+    lineHeight: 18,
+  },
+  emptyHint: {
+    ...typography.caption,
+    color: colors.mutedText,
+    lineHeight: 18,
+  },
+});
