@@ -108,6 +108,8 @@ The app already has a solid core and is beyond starter level in the main mood fl
 - current streak, longest streak, and most common mood insights
 - top tags and hard-day tag pattern summaries
 - weekday rhythm insights when enough data exists
+- optional sleep, energy, and stress context logging
+- backup export, import, merge, and full restore
 - settings tab
 - export data
 - clear all data
@@ -129,8 +131,6 @@ The app already has a solid core and is beyond starter level in the main mood fl
 
 ### Not Yet Implemented
 
-- sleep / energy / stress context
-- export / backup
 - privacy lock
 - multiple entries per day
 - cloud sync
@@ -304,7 +304,6 @@ Goal: make tracking personal and consistent.
 
 ### Next
 
-- sleep / energy / stress context
 - privacy lock
 - backup / sync
 
@@ -349,6 +348,5 @@ Polish and deepen the reflection data.
 
 That means the best next improvements are:
 
-- sleep / energy / stress fields
 - stronger pattern detection
 - privacy and backup improvements

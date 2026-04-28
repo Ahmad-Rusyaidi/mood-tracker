@@ -1,92 +1,168 @@
 import { moodStorage } from "@/storage";
 import type { ContextScale, Mood, MoodContextKey, MoodEntry } from "@/types";
 import { syncMoodReminderScheduleAsync } from "@/utils/reminders";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 
-type MoodEntriesMap = Record<string, MoodEntry>; // key = YYYY-MM-DD
+type MoodEntriesMap = Record<string, MoodEntry>;
+
+type MoodEntriesState = {
+  isLoading: boolean;
+  map: MoodEntriesMap;
+};
 
 function toMap(entries: MoodEntry[]): MoodEntriesMap {
   const map: MoodEntriesMap = {};
-  for (const e of entries) map[e.date] = e;
+  for (const entry of entries) {
+    map[entry.date] = entry;
+  }
   return map;
 }
 
-export function useMoodEntries() {
-  const [map, setMap] = useState<MoodEntriesMap>({});
-  const [isLoading, setIsLoading] = useState(true);
+let state: MoodEntriesState = {
+  isLoading: true,
+  map: {},
+};
 
-  const refresh = useCallback(async () => {
-    setIsLoading(true);
+let hasLoaded = false;
+let refreshPromise: Promise<void> | null = null;
+
+const listeners = new Set<() => void>();
+
+function emitChange() {
+  for (const listener of listeners) {
+    listener();
+  }
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+function getSnapshot() {
+  return state;
+}
+
+function setState(next: MoodEntriesState) {
+  state = next;
+  emitChange();
+}
+
+async function refreshMoodEntries() {
+  if (refreshPromise) return refreshPromise;
+
+  setState({
+    ...state,
+    isLoading: true,
+  });
+
+  refreshPromise = (async () => {
     try {
       const entries = await moodStorage.getAll();
-      setMap(toMap(entries));
+      setState({
+        isLoading: false,
+        map: toMap(entries),
+      });
     } finally {
-      setIsLoading(false);
+      refreshPromise = null;
+      if (state.isLoading) {
+        setState({
+          ...state,
+          isLoading: false,
+        });
+      }
     }
-  }, []);
+  })();
+
+  return refreshPromise;
+}
+
+function ensureMoodEntriesLoaded() {
+  if (hasLoaded) return;
+  hasLoaded = true;
+  void refreshMoodEntries();
+}
+
+function upsertEntry(entry: MoodEntry) {
+  setState({
+    isLoading: false,
+    map: {
+      ...state.map,
+      [entry.date]: entry,
+    },
+  });
+}
+
+async function setMoodForDate(date: string, mood: Mood) {
+  const entry = await moodStorage.setMoodForDate(date, mood);
+  upsertEntry(entry);
+  void syncMoodReminderScheduleAsync({ requestPermissions: false });
+  return entry;
+}
+
+async function setTagsForDate(date: string, tags: string[]) {
+  const entry = await moodStorage.setTagsForDate(date, tags);
+  upsertEntry(entry);
+  return entry;
+}
+
+async function setNoteForDate(date: string, note: string) {
+  const entry = await moodStorage.setNoteForDate(date, note);
+  upsertEntry(entry);
+  return entry;
+}
+
+async function setContextForDate(
+  date: string,
+  key: MoodContextKey,
+  value: ContextScale | null
+) {
+  const entry = await moodStorage.setContextForDate(date, key, value);
+  upsertEntry(entry);
+  return entry;
+}
+
+async function removeByDate(date: string) {
+  await moodStorage.removeByDate(date);
+
+  if (state.map[date]) {
+    const nextMap = { ...state.map };
+    delete nextMap[date];
+    setState({
+      isLoading: false,
+      map: nextMap,
+    });
+  }
+
+  void syncMoodReminderScheduleAsync({ requestPermissions: false });
+}
+
+export function useMoodEntries() {
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
-
-  const setMoodForDate = useCallback(async (date: string, mood: Mood) => {
-    const entry = await moodStorage.setMoodForDate(date, mood);
-    setMap((prev) => ({ ...prev, [date]: entry }));
-    void syncMoodReminderScheduleAsync({ requestPermissions: false });
-    return entry;
-  }, []);
-
-  const setTagsForDate = useCallback(async (date: string, tags: string[]) => {
-    const entry = await moodStorage.setTagsForDate(date, tags);
-    setMap((prev) => ({ ...prev, [date]: entry }));
-    return entry;
-  }, []);
-
-  const setNoteForDate = useCallback(async (date: string, note: string) => {
-    const entry = await moodStorage.setNoteForDate(date, note);
-    setMap((prev) => ({ ...prev, [date]: entry }));
-    return entry;
-  }, []);
-
-  const setContextForDate = useCallback(
-    async (date: string, key: MoodContextKey, value: ContextScale | null) => {
-      const entry = await moodStorage.setContextForDate(date, key, value);
-      setMap((prev) => ({ ...prev, [date]: entry }));
-      return entry;
-    },
-    []
-  );
-
-  const removeByDate = useCallback(async (date: string) => {
-    await moodStorage.removeByDate(date);
-    setMap((prev) => {
-      if (!prev[date]) return prev;
-      const copy = { ...prev };
-      delete copy[date];
-      return copy;
-    });
-    void syncMoodReminderScheduleAsync({ requestPermissions: false });
+    ensureMoodEntriesLoaded();
   }, []);
 
   const entries = useMemo(() => {
-    return Object.values(map).sort((a, b) => (a.date < b.date ? 1 : -1));
-  }, [map]);
+    return Object.values(snapshot.map).sort((a, b) => (a.date < b.date ? 1 : -1));
+  }, [snapshot.map]);
 
-  const getByDate = useCallback(
-    (date: string) => map[date] ?? null,
-    [map]
+  return useMemo(
+    () => ({
+      isLoading: snapshot.isLoading,
+      entries,
+      map: snapshot.map,
+      refresh: refreshMoodEntries,
+      getByDate: (date: string) => snapshot.map[date] ?? null,
+      setMoodForDate,
+      setTagsForDate,
+      setNoteForDate,
+      setContextForDate,
+      removeByDate,
+    }),
+    [entries, snapshot.isLoading, snapshot.map]
   );
-
-  return {
-    isLoading,
-    entries,
-    map,
-    refresh,
-    getByDate,
-    setMoodForDate,
-    setTagsForDate,
-    setNoteForDate,
-    setContextForDate,
-    removeByDate,
-  };
 }

@@ -30,12 +30,12 @@ function parseISODateLocal(iso: string) {
   return new Date(year ?? 0, (month ?? 1) - 1, day ?? 1);
 }
 
-function countActiveFilters(f: MonthFiltersState) {
+function countActiveFilters(filters: MonthFiltersState) {
   return (
-    f.moods.length +
-    f.tags.length +
-    (f.onlyBadDays ? 1 : 0) +
-    (f.onlyStreakDays ? 1 : 0)
+    filters.moods.length +
+    filters.tags.length +
+    (filters.onlyBadDays ? 1 : 0) +
+    (filters.onlyStreakDays ? 1 : 0)
   );
 }
 
@@ -60,18 +60,14 @@ export default function HomeScreen() {
   const { settings, addCustomTag } = useAppSettings();
   const selectedEntry = getByDate(selectedDate);
 
-  // Filters state
   const [filters, setFilters] = useState<MonthFiltersState>({
     moods: [],
     tags: [],
     onlyBadDays: false,
     onlyStreakDays: false,
   });
-
-  // Panel open/close
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  // Dim predicate (only dims when filters are active)
   const dimDay = useMemo(
     () => makeDimPredicate({ filters, entriesMap: map, selectedDate }),
     [filters, map, selectedDate]
@@ -79,9 +75,10 @@ export default function HomeScreen() {
 
   const activeFilterCount = useMemo(() => countActiveFilters(filters), [filters]);
 
-  // Optional: when user leaves month view, auto-collapse filters panel
   useEffect(() => {
-    if (viewMode !== "month") setFiltersOpen(false);
+    if (viewMode !== "month") {
+      setFiltersOpen(false);
+    }
   }, [viewMode]);
 
   useEffect(() => {
@@ -105,7 +102,7 @@ export default function HomeScreen() {
     setViewMode("day");
   };
 
-  // ✅ Equal-width pills (responsive)
+  // Equal-width pills that stay responsive across screen sizes.
   const { width: screenWidth } = useWindowDimensions();
   const PILL_GAP = 10;
   const PILL_COUNT = 3;
@@ -115,7 +112,7 @@ export default function HomeScreen() {
 
   const pillWidth = Math.max(72, Math.floor(availableWidth / PILL_COUNT));
 
-  // ✅ Sliding indicator
+  // Sliding indicator for the active view pill.
   const indicatorX = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -131,7 +128,6 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Toggle with sliding indicator */}
       <View style={styles.toggleWrapper}>
         <Animated.View
           pointerEvents="none"
@@ -142,12 +138,12 @@ export default function HomeScreen() {
         />
 
         <View style={styles.toggleRow}>
-          {(["day", "week", "month"] as const).map((m) => {
-            const active = viewMode === m;
+          {(["day", "week", "month"] as const).map((mode) => {
+            const active = viewMode === mode;
             return (
               <Pressable
-                key={m}
-                onPress={() => setViewMode(m)}
+                key={mode}
+                onPress={() => setViewMode(mode)}
                 style={[
                   styles.togglePill,
                   { width: pillWidth },
@@ -162,7 +158,7 @@ export default function HomeScreen() {
                       : styles.toggleTextInactive,
                   ]}
                 >
-                  {m.toUpperCase()}
+                  {mode.toUpperCase()}
                 </Text>
               </Pressable>
             );
@@ -170,21 +166,19 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Calendar area */}
       <View style={styles.calendarArea}>
         {viewMode === "month" && (
           <>
-            {/* ✅ Filters button */}
             <View
               style={{
                 width: "100%",
                 flexDirection: "row",
-                justifyContent: "flex-start", // 👈 left
+                justifyContent: "flex-start",
                 marginBottom: 10,
               }}
             >
               <Pressable
-                onPress={() => setFiltersOpen((v) => !v)}
+                onPress={() => setFiltersOpen((value) => !value)}
                 style={{
                   paddingHorizontal: 14,
                   paddingVertical: 10,
@@ -197,9 +191,7 @@ export default function HomeScreen() {
                   gap: 8,
                 }}
               >
-                <Text style={{ fontWeight: "900" }}>
-                  ☰ Filters
-                </Text>
+                <Text style={{ fontWeight: "900" }}>Filters</Text>
 
                 {activeFilterCount > 0 ? (
                   <View
@@ -220,12 +212,11 @@ export default function HomeScreen() {
                 ) : null}
 
                 <Text style={{ fontWeight: "900", color: "#1F2937" }}>
-                  {filtersOpen ? "▴" : "▾"}
+                  {filtersOpen ? "^" : "v"}
                 </Text>
               </Pressable>
             </View>
 
-            {/* ✅ Filters panel (collapsible) */}
             {filtersOpen ? (
               <MonthFilters
                 month={month}
@@ -251,7 +242,7 @@ export default function HomeScreen() {
 
         {viewMode === "week" && (
           <WeekCalendar
-            anchorDate={new Date(selectedDate)}
+            anchorDate={parseISODateLocal(selectedDate)}
             selectedDate={selectedDate}
             entriesMap={map}
             onSelectDate={(date) => {
@@ -268,7 +259,9 @@ export default function HomeScreen() {
             onChangeMood={(mood) => void setMoodForDate(selectedDate, mood)}
             onChangeTags={(tags) => void setTagsForDate(selectedDate, tags)}
             onChangeNote={(note) => void setNoteForDate(selectedDate, note)}
-            onChangeContext={(key, value) => void setContextForDate(selectedDate, key, value)}
+            onChangeContext={(key, value) =>
+              void setContextForDate(selectedDate, key, value)
+            }
             entriesMap={map}
             availableTags={settings.customTags}
             onCreateCustomTag={(tag) => addCustomTag(tag)}
@@ -276,7 +269,6 @@ export default function HomeScreen() {
         )}
       </View>
 
-      {/* Dev reset */}
       {__DEV__ && (
         <Text
           onPress={async () => {

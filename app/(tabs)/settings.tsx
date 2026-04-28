@@ -15,7 +15,7 @@ import {
 } from "@/utils/reminders";
 import { formatReminderTime, normalizeReminderTime } from "@/utils/reminderTime";
 import * as DocumentPicker from "expo-document-picker";
-import { File, Paths } from "expo-file-system/src/FileSystem";
+import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import React, { useEffect, useMemo, useState } from "react";
 import {

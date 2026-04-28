@@ -1,26 +1,27 @@
-import { moodStorage } from '@/storage';
-import { toISODateLocal } from '@/utils';
+import { toISODateLocal } from "@/utils";
 import {
   getMoodFromReminderAction,
   isDailyMoodReminderNotification,
   registerDailyReminderCategoryAsync,
   syncMoodReminderScheduleAsync,
-} from '@/utils/reminders';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import * as Notifications from 'expo-notifications';
-import { Stack, router } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef } from 'react';
-import { AppState } from 'react-native';
-import 'react-native-reanimated';
+} from "@/utils/reminders";
+import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
+import * as Notifications from "expo-notifications";
+import { Stack, router } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { useEffect, useRef } from "react";
+import { AppState } from "react-native";
+import "react-native-reanimated";
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useMoodEntries } from "@/hooks";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export const unstable_settings = {
-  anchor: '(tabs)',
+  anchor: "(tabs)",
 };
 
 function useReminderNotificationObserver() {
+  const { setMoodForDate } = useMoodEntries();
   const handledResponseKeysRef = useRef(new Set<string>());
 
   useEffect(() => {
@@ -40,12 +41,13 @@ function useReminderNotificationObserver() {
 
       const requestedDate = notification.request.content.data?.targetDate;
       const targetDate =
-        typeof requestedDate === 'string' ? requestedDate : toISODateLocal(new Date(notification.date));
+        typeof requestedDate === "string"
+          ? requestedDate
+          : toISODateLocal(new Date(notification.date));
       const mood = getMoodFromReminderAction(response.actionIdentifier);
 
       if (mood) {
-        await moodStorage.setMoodForDate(targetDate, mood);
-        void syncMoodReminderScheduleAsync({ requestPermissions: false });
+        await setMoodForDate(targetDate, mood);
       }
 
       if (!isActive) return;
@@ -70,8 +72,8 @@ function useReminderNotificationObserver() {
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
       void handleResponse(response);
     });
-    const appStateSubscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') {
+    const appStateSubscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
         void syncMoodReminderScheduleAsync({ requestPermissions: false });
       }
     });
@@ -81,7 +83,7 @@ function useReminderNotificationObserver() {
       subscription.remove();
       appStateSubscription.remove();
     };
-  }, []);
+  }, [setMoodForDate]);
 }
 
 export default function RootLayout() {
@@ -89,10 +91,10 @@ export default function RootLayout() {
   useReminderNotificationObserver();
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+        <Stack.Screen name="modal" options={{ presentation: "modal", title: "Modal" }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
