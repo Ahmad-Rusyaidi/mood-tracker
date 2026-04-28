@@ -1,4 +1,5 @@
-import { HistoryEntryCard, HistoryFilters } from "@/components/history";
+import { HistoryEntryCard } from "@/components/history/HistoryEntryCard";
+import { HistoryFilters } from "@/components/history/HistoryFilters";
 import { useHistoryScreen } from "@/hooks";
 import { styles } from "@/styles/history.styles";
 import { useRouter } from "expo-router";

@@ -1,8 +1,9 @@
-import { HomeMonthPanel, HomeViewToggle } from "@/components/home";
+import { HomeMonthPanel } from "@/components/home/HomeMonthPanel";
+import { HomeViewToggle } from "@/components/home/HomeViewToggle";
 import { DayCalendar } from "@/components/mood/DayCalendar";
 import { WeekCalendar } from "@/components/mood/WeekCalendar";
 import { useHomeScreen } from "@/hooks";
-import { styles } from "@/styles/mood/index.styles";
+import { styles } from "@/styles/home.styles";
 import { parseISODateLocal } from "@/utils/home";
 import React from "react";
 import { View } from "react-native";

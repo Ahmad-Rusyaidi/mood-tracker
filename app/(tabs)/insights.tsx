@@ -2,16 +2,18 @@ import {
   CompareCard,
   GuidanceCard,
   HeroCard,
-  MoodMixCard,
-  MoodMixStripCard,
   PatternCard,
   SectionHeader,
   SignalCard,
   SpotlightCard,
   StatPill,
+} from "@/components/insights/InsightCards";
+import {
+  MoodMixCard,
+  MoodMixStripCard,
   TagListCard,
   WeekdayRhythmCard,
-} from "@/components/insights";
+} from "@/components/insights/InsightBreakdown";
 import { useInsightsScreen } from "@/hooks";
 import { spacing } from "@/styles";
 import { styles } from "@/styles/insights.styles";

@@ -3,7 +3,7 @@ import {
   MonthFilters,
   type MonthFiltersState,
 } from "@/components/mood/MonthFilters";
-import { styles } from "@/styles/mood/index.styles";
+import { styles } from "@/styles/home.styles";
 import type { MoodEntry } from "@/types";
 import React from "react";
 import { Pressable, Text, View } from "react-native";

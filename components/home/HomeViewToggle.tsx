@@ -1,4 +1,4 @@
-import { styles } from "@/styles/mood/index.styles";
+import { styles } from "@/styles/home.styles";
 import type { ViewMode } from "@/utils/home";
 import React from "react";
 import { Animated, Pressable, Text, View } from "react-native";

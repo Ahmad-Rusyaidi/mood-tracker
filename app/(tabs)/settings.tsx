@@ -1,9 +1,7 @@
-import {
-  BackupRestoreSection,
-  DataSection,
-  ReminderPreferencesSection,
-  TagManagementSection,
-} from "@/components/settings";
+import { BackupRestoreSection } from "@/components/settings/BackupRestoreSection";
+import { DataSection } from "@/components/settings/DataSection";
+import { ReminderPreferencesSection } from "@/components/settings/ReminderPreferencesSection";
+import { TagManagementSection } from "@/components/settings/TagManagementSection";
 import { useSettingsScreen } from "@/hooks";
 import { styles } from "@/styles/settings.styles";
 import React from "react";
