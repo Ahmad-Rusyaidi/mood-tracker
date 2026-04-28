@@ -7,6 +7,7 @@ import {
   SignalCard,
   SpotlightCard,
   StatPill,
+  WarningCard,
 } from "@/components/insights/InsightCards";
 import {
   MoodMixCard,
@@ -75,7 +76,10 @@ export default function InsightsScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.section}>
-            <SectionHeader title="This week" />
+            <SectionHeader
+              title="This week"
+              subtitle="A clearer read on how your recent days are landing."
+            />
 
             <HeroCard
               eyebrow={insights.weekly.weekStory.eyebrow}
@@ -87,6 +91,25 @@ export default function InsightsScreen() {
             />
 
             <GuidanceCard {...insights.weekly.guidanceCard} />
+
+            {insights.weekly.warnings.length > 0 ? (
+              <View style={styles.warningRow}>
+                {insights.weekly.warnings.map((warning) => {
+                  const target =
+                    warning.key && warning.band
+                      ? { key: warning.key, band: warning.band }
+                      : null;
+
+                  return (
+                    <WarningCard
+                      key={warning.id}
+                      warning={warning}
+                      onPress={target ? () => openContextHistory(target) : null}
+                    />
+                  );
+                })}
+              </View>
+            ) : null}
 
             <View style={styles.statsPanel}>
               {insights.weekly.stats.map((item) => (
@@ -109,7 +132,10 @@ export default function InsightsScreen() {
           </View>
 
           <View style={styles.section}>
-            <SectionHeader title="What stands out" />
+            <SectionHeader
+              title="What stands out"
+              subtitle="The clearest repeat patterns from your tags, context, and routines."
+            />
 
             <View style={styles.grid}>
               {insights.highlights.evidenceCards.map((card) => (
@@ -151,8 +177,6 @@ export default function InsightsScreen() {
               ))}
             </View>
 
-            <WeekdayRhythmCard items={insights.highlights.weekdayInsights} />
-
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -176,11 +200,15 @@ export default function InsightsScreen() {
           </View>
 
           <View style={styles.section}>
-            <SectionHeader title="Breakdown" />
+            <SectionHeader
+              title="Breakdown"
+              subtitle="The mix underneath the story, so you can sanity-check the patterns."
+            />
 
             <MoodMixStripCard
               title="Mood mix this week"
               summary={insights.breakdown.weekSummary}
+              summaryText={insights.breakdown.weekSummaryText}
             />
 
             <View style={styles.grid}>
@@ -188,12 +216,18 @@ export default function InsightsScreen() {
                 title="This month"
                 summary={insights.breakdown.monthSummary}
                 compact={insights.layout.twoUpDetails}
+                summaryText={insights.breakdown.monthSummaryText}
               />
               <TagListCard
                 topTags={insights.breakdown.topTags}
                 hardDayTags={insights.breakdown.hardDayTags}
               />
             </View>
+
+            <WeekdayRhythmCard
+              items={insights.highlights.weekdayInsights}
+              summary={insights.breakdown.weekdaySummaryText}
+            />
           </View>
         </ScrollView>
       )}

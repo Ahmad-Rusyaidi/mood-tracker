@@ -8,15 +8,18 @@ import { Text, View } from "react-native";
 export function MoodMixStripCard({
   title,
   summary,
+  summaryText,
 }: {
   title: string;
   summary: MoodSummary;
+  summaryText?: string;
 }) {
   const total = Object.values(summary).reduce((sum, value) => sum + value, 0);
 
   return (
     <View style={styles.stripCard}>
       <Text style={styles.stripTitle}>{title}</Text>
+      {summaryText ? <Text style={styles.stripSummary}>{summaryText}</Text> : null}
 
       {total === 0 ? (
         <Text style={styles.emptyText}>No moods logged yet.</Text>
@@ -58,14 +61,18 @@ export function MoodMixStripCard({
 
 export function WeekdayRhythmCard({
   items,
+  summary,
 }: {
   items: { label: string; count: number; averageScore: number }[];
+  summary?: string;
 }) {
   const byWeekday = new Map(items.map((item) => [item.label, item]));
+  const bestLabel = items[0]?.label;
 
   return (
     <View style={styles.stripCard}>
       <Text style={styles.stripTitle}>Weekday rhythm</Text>
+      {summary ? <Text style={styles.stripSummary}>{summary}</Text> : null}
       <View style={styles.weekdayChart}>
         {WEEKDAY_ORDER.map((label) => {
           const item = byWeekday.get(label);
@@ -80,7 +87,12 @@ export function WeekdayRhythmCard({
                     styles.weekdayBar,
                     {
                       height,
-                      backgroundColor: item ? "#8DB2FF" : "#D8E2F6",
+                      backgroundColor:
+                        !item
+                          ? "#D8E2F6"
+                          : label === bestLabel
+                            ? "#356DFF"
+                            : "#8DB2FF",
                     },
                   ]}
                 />
@@ -98,16 +110,19 @@ export function MoodMixCard({
   title,
   summary,
   compact,
+  summaryText,
 }: {
   title: string;
   summary: MoodSummary;
   compact: boolean;
+  summaryText?: string;
 }) {
   const max = Math.max(...Object.values(summary));
 
   return (
     <View style={[styles.detailCard, compact ? styles.halfCard : styles.fullCard]}>
       <Text style={styles.detailCardTitle}>{title}</Text>
+      {summaryText ? <Text style={styles.stripSummary}>{summaryText}</Text> : null}
 
       {max === 0 ? (
         <Text style={styles.emptyText}>No moods logged yet.</Text>

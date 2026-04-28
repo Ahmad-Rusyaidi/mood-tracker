@@ -18,6 +18,7 @@ import {
   getTopTagsForMoods,
   getWeekComparison,
   getWeekSummary,
+  getWeekWarnings,
   getWeekdayInsights,
 } from "@/utils/moodStats";
 import {
@@ -28,7 +29,9 @@ import {
   getContextDrilldownTarget,
   getContextSpotlight,
   getGuidanceCard,
+  getMoodMixSummary,
   getMonthStory,
+  getWeekdayRhythmSummary,
   getSignalConfidenceLabel,
   getWeekStory,
   type ContextDrilldownTarget,
@@ -97,6 +100,7 @@ export function useInsightsScreen() {
     () => getMonthComparison(entries, thisMonth),
     [entries, thisMonth]
   );
+  const weekWarnings = useMemo(() => getWeekWarnings(entries, today), [entries, today]);
   const contextSignals = useMemo(() => getContextSignals(entries), [entries]);
   const comboHighlights = useMemo(() => getComboHighlights(entries), [entries]);
   const sleepCoverage = useMemo(() => getContextCoverage(entries, "sleep", today), [entries, today]);
@@ -251,6 +255,7 @@ export function useInsightsScreen() {
       actionHint,
       guidanceCard,
       monthStory,
+      warnings: weekWarnings,
       monthComparisonConfidence: getComparisonConfidenceLabel(
         monthComparison.currentCount,
         monthComparison.previousCount
@@ -268,6 +273,9 @@ export function useInsightsScreen() {
     breakdown: {
       weekSummary,
       monthSummary,
+      weekSummaryText: getMoodMixSummary(weekSummary, "this week"),
+      monthSummaryText: getMoodMixSummary(monthSummary, "this month"),
+      weekdaySummaryText: getWeekdayRhythmSummary(weekdayInsights),
       topTags,
       hardDayTags,
     },

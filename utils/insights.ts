@@ -3,7 +3,9 @@ import type {
   ComboHighlight,
   ContextCoverage,
   ContextSignal,
+  MoodSummary,
   TagAssociation,
+  WeekWarning,
 } from "@/utils/moodStats";
 import { moodToEmoji } from "@/utils/moodUi";
 
@@ -87,6 +89,10 @@ function capitalize(text: string) {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+function formatRangeLabel(rangeLabel: string) {
+  return rangeLabel.toLowerCase();
+}
+
 function formatContextFeatureLabel(feature: string) {
   if (feature.startsWith("tag:")) return `#${feature.slice(4)}`;
 
@@ -104,6 +110,57 @@ function formatScoreShift(delta: number | null) {
   if (delta <= -0.8) return "noticeably heavier";
   if (delta <= -0.35) return "slightly heavier";
   return "pretty similar";
+}
+
+export function getMoodMixSummary(summary: MoodSummary, rangeLabel: string) {
+  const entries = Object.entries(summary) as [Mood, number][];
+  const total = entries.reduce((sum, [, count]) => sum + count, 0);
+
+  if (total === 0) {
+    return `No mood mix yet for ${formatRangeLabel(rangeLabel)}.`;
+  }
+
+  const ordered = [...entries]
+    .filter(([, count]) => count > 0)
+    .sort((a, b) => (b[1] !== a[1] ? b[1] - a[1] : a[0].localeCompare(b[0])));
+
+  const [topMood, topCount] = ordered[0];
+  const topShare = topCount / total;
+  const topLabel = `${moodToEmoji[topMood]} ${topMood}`;
+
+  if (topShare >= 0.6) {
+    return `${capitalize(topLabel)} shaped most of ${formatRangeLabel(rangeLabel)}.`;
+  }
+
+  const second = ordered[1];
+  if (second && (topCount + second[1]) / total >= 0.75) {
+    return `${capitalize(topLabel)} and ${second[0]} made up most of ${formatRangeLabel(
+      rangeLabel
+    )}.`;
+  }
+
+  return `${total} check-ins made ${formatRangeLabel(rangeLabel)} feel fairly mixed overall.`;
+}
+
+export function getWeekdayRhythmSummary(
+  items: { label: string; count: number; averageScore: number }[]
+) {
+  if (items.length === 0) {
+    return "Log a few more weekdays to reveal your steadier days.";
+  }
+
+  const best = items[0];
+  const toughest = items[items.length - 1];
+
+  if (!best) {
+    return "Log a few more weekdays to reveal your steadier days.";
+  }
+
+  if (items.length === 1 || best.label === toughest?.label) {
+    return `${best.label} is starting to form a pattern, but it is still early.`;
+  }
+
+  return `${best.label} looks steadiest so far, while ${toughest?.label} tends to feel heavier.`;
 }
 
 export function getWeekStory(args: {
@@ -465,14 +522,20 @@ export function getSignalVerdictLabel(signal: ContextSignal | null) {
   if (signal?.delta == null) return "early";
 
   if (signal.key === "stress") {
-    return signal.delta <= -0.3 ? "watch" : "mixed";
+    if (signal.delta <= -0.8) return "strong drag";
+    if (signal.delta <= -0.3) return "watch";
+    return "mixed";
   }
 
   if (signal.key === "sleep") {
-    return signal.delta >= 0.3 ? "helpful" : "mixed";
+    if (signal.delta >= 0.8) return "strong lift";
+    if (signal.delta >= 0.3) return "helpful";
+    return "mixed";
   }
 
-  return signal.delta >= 0.3 ? "helpful" : "mixed";
+  if (signal.delta >= 0.8) return "strong lift";
+  if (signal.delta >= 0.3) return "helpful";
+  return "mixed";
 }
 
 export function getSignalSummary(signal: ContextSignal | null, coverage: ContextCoverage) {
@@ -483,15 +546,27 @@ export function getSignalSummary(signal: ContextSignal | null, coverage: Context
   }
 
   if (signal.key === "stress") {
+    if (signal.delta <= -0.8) {
+      return "Stress has the clearest downside right now, with a noticeable drop on high-stress days.";
+    }
+
     return signal.delta <= -0.3
       ? "Higher-stress days tend to land worse."
       : "Stress is showing only a light difference so far.";
   }
 
   if (signal.key === "sleep") {
+    if (signal.delta >= 0.8) {
+      return "Sleep looks like a strong support right now, with better days clustering around better rest.";
+    }
+
     return signal.delta >= 0.3
       ? "Better-sleep days tend to land better."
       : "Sleep is showing only a light difference so far.";
+  }
+
+  if (signal.delta >= 0.8) {
+    return "Energy looks like a real lever right now, with a noticeable lift on higher-energy days.";
   }
 
   return signal.delta >= 0.3
@@ -528,4 +603,25 @@ export function getSignalConfidenceLabel(signal: ContextSignal | null) {
 
 export function getComparisonConfidenceLabel(currentCount: number, previousCount: number) {
   return getConfidenceLabel(Math.min(currentCount, previousCount));
+}
+
+export function getSignalDeltaText(signal: ContextSignal | null) {
+  if (signal?.delta == null) return "Not enough contrast yet";
+  return `${Math.abs(signal.delta).toFixed(1)} point swing`;
+}
+
+export function getWarningTone(warning: WeekWarning) {
+  if (warning.id === "hard-streak" || warning.id === "stress-warning") {
+    return "warm" as const;
+  }
+
+  return "cool" as const;
+}
+
+export function getWarningLabel(warning: WeekWarning) {
+  if (warning.id === "weekly-drop") return "Week shift";
+  if (warning.id === "hard-streak") return "Hard run";
+  if (warning.id === "stress-warning") return "Stress watch";
+  if (warning.id === "sleep-warning") return "Sleep watch";
+  return "Watch this";
 }

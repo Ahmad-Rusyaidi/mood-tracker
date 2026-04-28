@@ -1,12 +1,15 @@
 import { styles } from "@/styles/insights.styles";
 import type { Mood } from "@/types";
-import type { ContextCoverage, ContextSignal } from "@/utils/moodStats";
+import type { ContextCoverage, ContextSignal, WeekWarning } from "@/utils/moodStats";
 import { moodToEmoji } from "@/utils/moodUi";
 import {
   getSignalConfidenceLine,
+  getSignalDeltaText,
   getSignalMeterValue,
   getSignalSummary,
   getSignalVerdictLabel,
+  getWarningLabel,
+  getWarningTone,
   type GuidanceCardData,
   type HeroTone,
   type PatternCardData,
@@ -124,6 +127,33 @@ export function GuidanceCard({ eyebrow, title, body, prompt }: GuidanceCardData)
         <Text style={styles.promptText}>{prompt}</Text>
       </View>
     </View>
+  );
+}
+
+export function WarningCard({
+  warning,
+  onPress,
+}: {
+  warning: WeekWarning;
+  onPress?: (() => void) | null;
+}) {
+  const tone = getWarningTone(warning);
+
+  return (
+    <Pressable
+      disabled={!onPress}
+      onPress={onPress ?? undefined}
+      style={[
+        styles.warningCard,
+        tone === "warm" ? styles.warningCardWarm : styles.warningCardCool,
+        onPress ? styles.warningCardPressable : null,
+      ]}
+    >
+      <Text style={styles.warningLabel}>{getWarningLabel(warning)}</Text>
+      <Text style={styles.warningTitle}>{warning.title}</Text>
+      <Text style={styles.warningDetail}>{warning.detail}</Text>
+      {onPress ? <Text style={styles.warningLink}>Open days</Text> : null}
+    </Pressable>
   );
 }
 
@@ -250,6 +280,7 @@ export function SignalCard({
   const verdictLabel = getSignalVerdictLabel(signal);
   const summary = getSignalSummary(signal, coverage);
   const confidenceLine = getSignalConfidenceLine(confidence, signal, coverage);
+  const deltaText = getSignalDeltaText(signal);
 
   return (
     <Pressable
@@ -282,6 +313,11 @@ export function SignalCard({
         />
       </View>
 
+      <View style={styles.signalScaleLabels}>
+        <Text style={styles.signalScaleLabel}>Lower</Text>
+        <Text style={styles.signalScaleLabel}>Higher</Text>
+      </View>
+
       <Text style={styles.signalMetaText}>
         {signal
           ? `${coverage.thisWeekCount} this week / ${signal.lowCount} low / ${signal.highCount} high`
@@ -289,6 +325,7 @@ export function SignalCard({
       </Text>
 
       <Text style={styles.signalSummary}>{summary}</Text>
+      <Text style={styles.signalDelta}>{deltaText}</Text>
 
       {onPress ? <Text style={styles.signalLinkText}>Open days</Text> : null}
     </Pressable>

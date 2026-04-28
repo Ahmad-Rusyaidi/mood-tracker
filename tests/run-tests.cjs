@@ -7,6 +7,11 @@ const {
   matchesContextBand,
 } = require("../utils/moodStats");
 const { buildReadableSummary } = require("../utils/shareSummary");
+const {
+  getMoodMixSummary,
+  getSignalDeltaText,
+  getWeekdayRhythmSummary,
+} = require("../utils/insights");
 
 function makeEntry(date, mood, extras = {}) {
   return {
@@ -150,6 +155,39 @@ run("buildReadableSummary uses recent-range wording for last 3 months", () => {
     /This summary focuses more on recent patterns than month-over-month comparison\./
   );
   assert.match(summary, /Most common mood in this range:/);
+});
+
+run("getMoodMixSummary describes a dominant mood mix clearly", () => {
+  const summary = getMoodMixSummary(
+    { happy: 4, neutral: 1, sad: 0, anxious: 0, angry: 0 },
+    "this week"
+  );
+
+  assert.match(summary, /Happy shaped most of this week/i);
+});
+
+run("getWeekdayRhythmSummary calls out the steadiest and heaviest days", () => {
+  const summary = getWeekdayRhythmSummary([
+    { label: "Tue", count: 3, averageScore: 4.4 },
+    { label: "Thu", count: 2, averageScore: 3.2 },
+    { label: "Sun", count: 2, averageScore: 1.8 },
+  ]);
+
+  assert.match(summary, /Tue looks steadiest/i);
+  assert.match(summary, /Sun tends to feel heavier/i);
+});
+
+run("getSignalDeltaText formats signal swing labels", () => {
+  const label = getSignalDeltaText({
+    key: "sleep",
+    lowCount: 2,
+    highCount: 3,
+    lowAverageScore: 2,
+    highAverageScore: 4,
+    delta: 2,
+  });
+
+  assert.equal(label, "2.0 point swing");
 });
 
 console.log("All interpretation tests passed.");
