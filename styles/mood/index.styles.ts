@@ -74,6 +74,46 @@ export const styles = StyleSheet.create({
     paddingTop: 10,
   },
 
+  filterBar: {
+    width: "100%",
+    flexDirection: "row",
+    justifyContent: "flex-start",
+    marginBottom: 10,
+  },
+
+  filterToggle: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: "#EEF2FF",
+    borderWidth: 1,
+    borderColor: "#AFC2FF",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+
+  filterToggleText: {
+    fontWeight: "900",
+    color: colors.text,
+  },
+
+  filterCountBadge: {
+    minWidth: 22,
+    height: 22,
+    paddingHorizontal: 6,
+    borderRadius: 999,
+    backgroundColor: "#111827",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  filterCountBadgeText: {
+    color: "#FFFFFF",
+    fontWeight: "900",
+    fontSize: 12,
+  },
+
   // Bottom section
   bottom: {
     paddingBottom: spacing.md,

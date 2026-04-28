@@ -1,281 +1,67 @@
+import { HomeMonthPanel, HomeViewToggle } from "@/components/home";
+import { DayCalendar } from "@/components/mood/DayCalendar";
+import { WeekCalendar } from "@/components/mood/WeekCalendar";
+import { useHomeScreen } from "@/hooks";
 import { styles } from "@/styles/mood/index.styles";
-import { useLocalSearchParams } from "expo-router";
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Animated,
-  Pressable,
-  Text,
-  useWindowDimensions,
-  View,
-} from "react-native";
+import { parseISODateLocal } from "@/utils/home";
+import React from "react";
+import { View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { MonthCalendar } from "@/components/mood";
-import { DayCalendar } from "@/components/mood/DayCalendar";
-import {
-  makeDimPredicate,
-  MonthFilters,
-  type MonthFiltersState,
-} from "@/components/mood/MonthFilters";
-import { WeekCalendar } from "@/components/mood/WeekCalendar";
-import { useAppSettings, useMoodEntries } from "@/hooks";
-import { spacing } from "@/styles";
-import { toISODateLocal } from "@/utils";
-
-type ViewMode = "day" | "week" | "month";
-
-function parseISODateLocal(iso: string) {
-  const [year, month, day] = iso.split("-").map(Number);
-  return new Date(year ?? 0, (month ?? 1) - 1, day ?? 1);
-}
-
-function addDays(date: Date, delta: number) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + delta);
-  return next;
-}
-
-function countActiveFilters(filters: MonthFiltersState) {
-  return (
-    filters.moods.length +
-    filters.tags.length +
-    (filters.onlyBadDays ? 1 : 0) +
-    (filters.onlyStreakDays ? 1 : 0)
-  );
-}
-
 export default function HomeScreen() {
-  const params = useLocalSearchParams<{ date?: string; view?: string }>();
-  const today = useMemo(() => new Date(), []);
-  const [month, setMonth] = useState(
-    new Date(today.getFullYear(), today.getMonth(), 1)
-  );
-  const [selectedDate, setSelectedDate] = useState(toISODateLocal(today));
-  const [viewMode, setViewMode] = useState<ViewMode>("month");
-
-  const {
-    map,
-    getByDate,
-    setMoodForDate,
-    setTagsForDate,
-    setContextForDate,
-  } = useMoodEntries();
-  const { settings, addCustomTag } = useAppSettings();
-  const selectedEntry = getByDate(selectedDate);
-
-  const [filters, setFilters] = useState<MonthFiltersState>({
-    moods: [],
-    tags: [],
-    onlyBadDays: false,
-    onlyStreakDays: false,
-  });
-  const [filtersOpen, setFiltersOpen] = useState(false);
-
-  const dimDay = useMemo(
-    () => makeDimPredicate({ filters, entriesMap: map, selectedDate }),
-    [filters, map, selectedDate]
-  );
-
-  const activeFilterCount = useMemo(() => countActiveFilters(filters), [filters]);
-
-  useEffect(() => {
-    if (viewMode !== "month") {
-      setFiltersOpen(false);
-    }
-  }, [viewMode]);
-
-  useEffect(() => {
-    const requestedDate = typeof params.date === "string" ? params.date : null;
-    const requestedView = typeof params.view === "string" ? params.view : null;
-    if (!requestedDate) return;
-
-    const parsed = parseISODateLocal(requestedDate);
-    if (Number.isNaN(parsed.getTime())) return;
-
-    setSelectedDate(requestedDate);
-    setMonth(new Date(parsed.getFullYear(), parsed.getMonth(), 1));
-
-    if (requestedView === "day" || requestedView === "week" || requestedView === "month") {
-      setViewMode(requestedView);
-    }
-  }, [params.date, params.view]);
-
-  const handleSelectDateFromMonth = (date: string) => {
-    setSelectedDate(date);
-    setViewMode("day");
-  };
-
-  // Equal-width pills that stay responsive across screen sizes.
-  const { width: screenWidth } = useWindowDimensions();
-  const PILL_GAP = 10;
-  const PILL_COUNT = 3;
-
-  const availableWidth =
-    screenWidth - spacing.md * 2 - PILL_GAP * (PILL_COUNT - 1);
-
-  const pillWidth = Math.max(72, Math.floor(availableWidth / PILL_COUNT));
-
-  // Sliding indicator for the active view pill.
-  const indicatorX = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const index = viewMode === "day" ? 0 : viewMode === "week" ? 1 : 2;
-
-    Animated.spring(indicatorX, {
-      toValue: index * (pillWidth + PILL_GAP),
-      friction: 9,
-      tension: 120,
-      useNativeDriver: true,
-    }).start();
-  }, [viewMode, pillWidth, indicatorX]);
+  const screen = useHomeScreen();
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.toggleWrapper}>
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            styles.toggleIndicator,
-            { width: pillWidth, transform: [{ translateX: indicatorX }] },
-          ]}
-        />
-
-        <View style={styles.toggleRow}>
-          {(["day", "week", "month"] as const).map((mode) => {
-            const active = viewMode === mode;
-            return (
-              <Pressable
-                key={mode}
-                onPress={() => setViewMode(mode)}
-                style={[
-                  styles.togglePill,
-                  { width: pillWidth },
-                  active ? styles.togglePillActive : styles.togglePillInactive,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.toggleText,
-                    active
-                      ? styles.toggleTextActive
-                      : styles.toggleTextInactive,
-                  ]}
-                >
-                  {mode.toUpperCase()}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
+      <HomeViewToggle
+        pillWidth={screen.pillWidth}
+        indicatorX={screen.indicatorX}
+        viewMode={screen.viewMode}
+        onSelectViewMode={screen.setViewMode}
+      />
 
       <View style={styles.calendarArea}>
-        {viewMode === "month" && (
-          <>
-            <View
-              style={{
-                width: "100%",
-                flexDirection: "row",
-                justifyContent: "flex-start",
-                marginBottom: 10,
-              }}
-            >
-              <Pressable
-                onPress={() => setFiltersOpen((value) => !value)}
-                style={{
-                  paddingHorizontal: 14,
-                  paddingVertical: 10,
-                  borderRadius: 999,
-                  backgroundColor: "#EEF2FF",
-                  borderWidth: 1,
-                  borderColor: "#AFC2FF",
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-              >
-                <Text style={{ fontWeight: "900" }}>Filters</Text>
+        {screen.viewMode === "month" ? (
+          <HomeMonthPanel
+            month={screen.month}
+            selectedDate={screen.selectedDate}
+            entriesMap={screen.map}
+            filtersOpen={screen.filtersOpen}
+            activeFilterCount={screen.activeFilterCount}
+            filters={screen.filters}
+            onToggleFilters={() => screen.setFiltersOpen((value) => !value)}
+            onChangeFilters={screen.setFilters}
+            onChangeMonth={screen.setMonth}
+            onSelectDate={screen.handleSelectDateFromMonth}
+            dimDay={screen.dimDay}
+          />
+        ) : null}
 
-                {activeFilterCount > 0 ? (
-                  <View
-                    style={{
-                      minWidth: 22,
-                      height: 22,
-                      paddingHorizontal: 6,
-                      borderRadius: 999,
-                      backgroundColor: "#111827",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Text style={{ color: "white", fontWeight: "900", fontSize: 12 }}>
-                      {activeFilterCount}
-                    </Text>
-                  </View>
-                ) : null}
-
-                <Text style={{ fontWeight: "900", color: "#1F2937" }}>
-                  {filtersOpen ? "^" : "v"}
-                </Text>
-              </Pressable>
-            </View>
-
-            {filtersOpen ? (
-              <MonthFilters
-                month={month}
-                entriesMap={map}
-                selectedDate={selectedDate}
-                value={filters}
-                onChange={setFilters}
-              />
-            ) : null}
-
-            <MonthCalendar
-              month={month}
-              selectedDate={selectedDate}
-              entriesMap={map}
-              onChangeMonth={setMonth}
-              onSelectDate={handleSelectDateFromMonth}
-              dimDay={dimDay}
-              variant="pastel"
-              size="normal"
-            />
-          </>
-        )}
-
-        {viewMode === "week" && (
+        {screen.viewMode === "week" ? (
           <WeekCalendar
-            anchorDate={parseISODateLocal(selectedDate)}
-            selectedDate={selectedDate}
-            entriesMap={map}
-            onNavigateWeek={(delta) => {
-              const nextDate = addDays(parseISODateLocal(selectedDate), delta * 7);
-              setSelectedDate(toISODateLocal(nextDate));
-            }}
-            onJumpToToday={() => {
-              setSelectedDate(toISODateLocal(today));
-            }}
-            onSelectDate={(date) => {
-              setSelectedDate(date);
-              setViewMode("day");
-            }}
+            anchorDate={parseISODateLocal(screen.selectedDate)}
+            selectedDate={screen.selectedDate}
+            entriesMap={screen.map}
+            onNavigateWeek={screen.navigateWeek}
+            onJumpToToday={screen.jumpToToday}
+            onSelectDate={screen.selectDateAndOpenDay}
           />
-        )}
+        ) : null}
 
-        {viewMode === "day" && (
+        {screen.viewMode === "day" ? (
           <DayCalendar
-            selectedDate={selectedDate}
-            entry={selectedEntry}
-            onChangeMood={(mood) => void setMoodForDate(selectedDate, mood)}
-            onChangeTags={(tags) => void setTagsForDate(selectedDate, tags)}
+            selectedDate={screen.selectedDate}
+            entry={screen.selectedEntry}
+            onChangeMood={(mood) => void screen.setMoodForDate(screen.selectedDate, mood)}
+            onChangeTags={(tags) => void screen.setTagsForDate(screen.selectedDate, tags)}
             onChangeContext={(key, value) =>
-              void setContextForDate(selectedDate, key, value)
+              void screen.setContextForDate(screen.selectedDate, key, value)
             }
-            entriesMap={map}
-            availableTags={settings.customTags}
-            onCreateCustomTag={(tag) => addCustomTag(tag)}
+            entriesMap={screen.map}
+            availableTags={screen.settings.customTags}
+            onCreateCustomTag={(tag) => screen.addCustomTag(tag)}
           />
-        )}
+        ) : null}
       </View>
     </SafeAreaView>
   );

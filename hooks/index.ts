@@ -3,4 +3,5 @@ export * from "./useAppSettings";
 export * from "./useInsightsScreen";
 export * from "./useSettingsScreen";
 export * from "./useHistoryScreen";
+export * from "./useHomeScreen";
 
