@@ -66,6 +66,23 @@ type EvidenceCardData = {
   confidence: string;
 };
 
+type SpotlightCardData = {
+  label: string;
+  title: string;
+  detail: string;
+  tone: "supportive" | "challenging" | "neutral";
+  confidence?: string;
+};
+
+type GuidanceCardData = {
+  eyebrow: string;
+  title: string;
+  body: string;
+  prompt: string;
+};
+
+type HeroTone = "steady" | "lift" | "care";
+
 function SectionHeader({
   title,
   subtitle,
@@ -87,17 +104,33 @@ function HeroCard({
   body,
   action,
   mood,
+  tone,
 }: {
   eyebrow: string;
   title: string;
   body: string;
   action?: string;
   mood?: Mood | null;
+  tone: HeroTone;
 }) {
   return (
-    <View style={styles.heroCard}>
+    <View
+      style={[
+        styles.heroCard,
+        tone === "lift" ? styles.heroCardLift : null,
+        tone === "care" ? styles.heroCardCare : null,
+      ]}
+    >
       <View style={styles.heroTopRow}>
-        <Text style={styles.heroEyebrow}>{eyebrow}</Text>
+        <Text
+          style={[
+            styles.heroEyebrow,
+            tone === "lift" ? styles.heroEyebrowLift : null,
+            tone === "care" ? styles.heroEyebrowCare : null,
+          ]}
+        >
+          {eyebrow}
+        </Text>
         {mood ? (
           <View style={styles.heroMoodBadge}>
             <Text style={styles.heroMoodEmoji}>{moodToEmoji[mood]}</Text>
@@ -106,14 +139,63 @@ function HeroCard({
         ) : null}
       </View>
 
-      <Text style={styles.heroTitle}>{title}</Text>
-      <Text style={styles.heroBody}>{body}</Text>
+      <Text
+        style={[
+          styles.heroTitle,
+          tone === "lift" ? styles.heroTitleLift : null,
+          tone === "care" ? styles.heroTitleCare : null,
+        ]}
+      >
+        {title}
+      </Text>
+      <Text
+        style={[
+          styles.heroBody,
+          tone === "lift" ? styles.heroBodyLift : null,
+          tone === "care" ? styles.heroBodyCare : null,
+        ]}
+      >
+        {body}
+      </Text>
 
       {action ? (
-        <View style={styles.heroActionPill}>
-          <Text style={styles.heroActionText}>{action}</Text>
+        <View
+          style={[
+            styles.heroActionPill,
+            tone === "lift" ? styles.heroActionPillLift : null,
+            tone === "care" ? styles.heroActionPillCare : null,
+          ]}
+        >
+          <Text
+            style={[
+              styles.heroActionText,
+              tone === "lift" ? styles.heroActionTextLift : null,
+              tone === "care" ? styles.heroActionTextCare : null,
+            ]}
+          >
+            {action}
+          </Text>
         </View>
       ) : null}
+    </View>
+  );
+}
+
+function GuidanceCard({
+  eyebrow,
+  title,
+  body,
+  prompt,
+}: GuidanceCardData) {
+  return (
+    <View style={styles.guidanceCard}>
+      <Text style={styles.guidanceEyebrow}>{eyebrow}</Text>
+      <Text style={styles.guidanceTitle}>{title}</Text>
+      <Text style={styles.guidanceBody}>{body}</Text>
+      <View style={styles.promptCard}>
+        <Text style={styles.promptLabel}>Try this</Text>
+        <Text style={styles.promptText}>{prompt}</Text>
+      </View>
     </View>
   );
 }
@@ -151,22 +233,20 @@ function CompareCard({
   );
 }
 
-function StatCard({
+function StatPill({
   label,
   value,
   caption,
-  compact,
 }: {
   label: string;
   value: string;
   caption?: string;
-  compact: boolean;
 }) {
   return (
-    <View style={[styles.statCard, compact ? styles.halfCard : styles.fullCard]}>
-      <Text style={styles.statLabel}>{label}</Text>
-      <Text style={styles.statValue}>{value}</Text>
-      {caption ? <Text style={styles.statNote}>{caption}</Text> : null}
+    <View style={styles.statPill}>
+      <Text style={styles.statPillLabel}>{label}</Text>
+      <Text style={styles.statPillValue}>{value}</Text>
+      {caption ? <Text style={styles.statPillNote}>{caption}</Text> : null}
     </View>
   );
 }
@@ -176,13 +256,13 @@ function PatternCard({
   value,
   detail,
   tone,
-  compact,
-}: PatternCardData & { compact: boolean }) {
+  twoUp,
+}: PatternCardData & { twoUp: boolean }) {
   return (
     <View
       style={[
         styles.patternCard,
-        compact ? styles.halfCard : styles.fullCard,
+        twoUp ? styles.halfCard : styles.fullCard,
         tone === "cool" ? styles.patternCardCool : null,
         tone === "warm" ? styles.patternCardWarm : null,
       ]}
@@ -194,29 +274,32 @@ function PatternCard({
   );
 }
 
-function EvidenceCard({
+function SpotlightCard({
   label,
   title,
   detail,
   tone,
   confidence,
   onPress,
-}: EvidenceCardData & { onPress: () => void }) {
+  twoUp,
+}: SpotlightCardData & { onPress?: (() => void) | null; twoUp: boolean }) {
   return (
     <Pressable
-      onPress={onPress}
+      disabled={!onPress}
+      onPress={onPress ?? undefined}
       style={[
-        styles.evidenceCard,
-        tone === "supportive" ? styles.evidenceCardSupportive : styles.evidenceCardChallenging,
+        styles.spotlightCard,
+        twoUp ? styles.halfCard : styles.fullCard,
+        tone === "supportive" ? styles.spotlightCardSupportive : null,
+        tone === "challenging" ? styles.spotlightCardChallenging : null,
+        tone === "neutral" ? styles.spotlightCardNeutral : null,
       ]}
     >
-      <Text style={styles.evidenceLabel}>{label}</Text>
-      <Text style={styles.confidenceBadge}>{confidence}</Text>
-      <Text style={styles.evidenceTitle}>{title}</Text>
-      <Text style={styles.evidenceDetail}>{detail}</Text>
-      <View style={styles.evidenceButton}>
-        <Text style={styles.evidenceButtonText}>View matching days</Text>
-      </View>
+      <Text style={styles.spotlightLabel}>{label}</Text>
+      {confidence ? <Text style={styles.confidenceBadge}>{confidence}</Text> : null}
+      <Text style={styles.spotlightTitle}>{title}</Text>
+      <Text style={styles.spotlightDetail}>{detail}</Text>
+      {onPress ? <Text style={styles.spotlightLink}>Open days</Text> : null}
     </Pressable>
   );
 }
@@ -227,29 +310,36 @@ function SignalCard({
   coverage,
   confidence,
   onPress,
+  cardWidth,
 }: {
   title: string;
   signal: ContextSignal | null;
   coverage: ContextCoverage;
   confidence?: string;
   onPress?: (() => void) | null;
+  cardWidth: number;
 }) {
   const meterValue = getSignalMeterValue(signal);
-  const shiftLabel = getSignalShiftLabel(signal);
+  const verdictLabel = getSignalVerdictLabel(signal);
   const summary = getSignalSummary(signal, coverage);
+  const confidenceLine = getSignalConfidenceLine(confidence, signal, coverage);
 
   return (
     <Pressable
       disabled={!onPress}
       onPress={onPress ?? undefined}
-      style={[styles.signalCard, onPress ? styles.signalCardPressable : null]}
+      style={[
+        styles.signalCard,
+        { width: cardWidth },
+        onPress ? styles.signalCardPressable : null,
+      ]}
     >
       <View style={styles.signalTopRow}>
         <Text style={styles.signalTitle}>{title}</Text>
-        <Text style={styles.signalShift}>{shiftLabel}</Text>
+        <Text style={styles.signalShift}>{verdictLabel}</Text>
       </View>
 
-      {confidence ? <Text style={styles.confidenceBadge}>{confidence}</Text> : null}
+      {confidenceLine ? <Text style={styles.signalConfidence}>{confidenceLine}</Text> : null}
 
       <View style={styles.signalTrack}>
         <View style={styles.signalTrackMid} />
@@ -265,19 +355,16 @@ function SignalCard({
         />
       </View>
 
-      <View style={styles.signalMetaRow}>
-        <Text style={styles.signalMetaText}>{`${coverage.thisWeekCount} this week`}</Text>
-        <Text style={styles.signalMetaText}>
-          {signal ? `${signal.lowCount} low / ${signal.highCount} high` : "not much yet"}
-        </Text>
-      </View>
+      <Text style={styles.signalMetaText}>
+        {signal
+          ? `${coverage.thisWeekCount} this week / ${signal.lowCount} low / ${signal.highCount} high`
+          : `${coverage.thisWeekCount} this week`}
+      </Text>
 
       <Text style={styles.signalSummary}>{summary}</Text>
 
       {onPress ? (
-        <View style={styles.signalLinkPill}>
-          <Text style={styles.signalLinkText}>View matching days</Text>
-        </View>
+        <Text style={styles.signalLinkText}>Open days</Text>
       ) : null}
     </Pressable>
   );
@@ -425,32 +512,47 @@ function MoodMixCard({
 }
 
 function TagListCard({
-  title,
-  items,
-  emptyLabel,
-  compact,
+  topTags,
+  hardDayTags,
 }: {
-  title: string;
-  items: { tag: string; count: number }[];
-  emptyLabel: string;
-  compact: boolean;
+  topTags: { tag: string; count: number }[];
+  hardDayTags: { tag: string; count: number }[];
 }) {
   return (
-    <View style={[styles.detailCard, compact ? styles.halfCard : styles.fullCard]}>
-      <Text style={styles.detailCardTitle}>{title}</Text>
+    <View style={[styles.detailCard, styles.fullCard]}>
+      <Text style={styles.detailCardTitle}>Tags that keep showing up</Text>
 
-      {items.length === 0 ? (
-        <Text style={styles.emptyText}>{emptyLabel}</Text>
-      ) : (
-        <View style={styles.tagWrap}>
-          {items.map((item) => (
-            <View key={item.tag} style={styles.tagPill}>
-              <Text style={styles.tagText}>{`#${item.tag}`}</Text>
-              <Text style={styles.tagCount}>{item.count}</Text>
-            </View>
-          ))}
-        </View>
-      )}
+      <View style={styles.tagSection}>
+        <Text style={styles.tagSectionLabel}>Most used</Text>
+        {topTags.length === 0 ? (
+          <Text style={styles.emptyText}>Add tags to reveal your recurring contexts.</Text>
+        ) : (
+          <View style={styles.tagWrap}>
+            {topTags.map((item) => (
+              <View key={`top-${item.tag}`} style={styles.tagPill}>
+                <Text style={styles.tagText}>{`#${item.tag}`}</Text>
+                <Text style={styles.tagCount}>{item.count}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
+
+      <View style={styles.tagSection}>
+        <Text style={styles.tagSectionLabel}>More common on tougher days</Text>
+        {hardDayTags.length === 0 ? (
+          <Text style={styles.emptyText}>Tag lower-mood days to reveal clearer tougher-day patterns.</Text>
+        ) : (
+          <View style={styles.tagWrap}>
+            {hardDayTags.map((item) => (
+              <View key={`hard-${item.tag}`} style={styles.tagPillWarm}>
+                <Text style={styles.tagText}>{`#${item.tag}`}</Text>
+                <Text style={styles.tagCount}>{item.count}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
     </View>
   );
 }
@@ -483,11 +585,16 @@ function getWeekStory(args: {
   currentStreak: number;
   comparison: ReturnType<typeof getWeekComparison>;
   mostCommonMood: { mood: Mood | null; count: number };
+  strongestContext?: ContextSignal | null;
+  supportiveTag?: { tag: string; count: number };
+  challengingTag?: { tag: string; count: number };
 }) {
   const shift = formatScoreShift(args.comparison.delta);
 
   if (args.weekCount < 3) {
     return {
+      eyebrow: "Settling in",
+      tone: "steady" as HeroTone,
       title: "This week is still taking shape.",
       body:
         args.currentStreak > 0
@@ -497,7 +604,33 @@ function getWeekStory(args: {
   }
 
   if (shift && args.comparison.previousCount >= 3) {
+    if (args.comparison.delta != null && args.comparison.delta <= -0.35) {
+      return {
+        eyebrow: "Go gently",
+        tone: "care" as HeroTone,
+        title: `This week feels ${shift} than last week.`,
+        body:
+          args.challengingTag != null
+            ? `That does not mean you are going backward. It may just be a week that needs softer handling, especially around #${args.challengingTag.tag}.`
+            : "That does not mean you are going backward. It may just be a week that needs softer handling.",
+      };
+    }
+
+    if (args.comparison.delta != null && args.comparison.delta >= 0.35) {
+      return {
+        eyebrow: "A small lift",
+        tone: "lift" as HeroTone,
+        title: `This week feels ${shift} than last week.`,
+        body:
+          args.supportiveTag != null
+            ? `Something may be helping, and #${args.supportiveTag.tag} keeps showing up as part of that steadier rhythm.`
+            : "Something may be helping, even if the week still feels ordinary from the inside.",
+      };
+    }
+
     return {
+      eyebrow: "Steady view",
+      tone: "steady" as HeroTone,
       title: `This week feels ${shift} than last week.`,
       body:
         args.mostCommonMood.mood != null
@@ -506,7 +639,27 @@ function getWeekStory(args: {
     };
   }
 
+  if (args.currentStreak >= 7) {
+    return {
+      eyebrow: "You kept showing up",
+      tone: "lift" as HeroTone,
+      title: "Your consistency is starting to matter.",
+      body: `${args.currentStreak} days in a row gives this page a much clearer signal, and it says something kind about your effort too.`,
+    };
+  }
+
+  if (args.strongestContext?.key === "stress" && (args.strongestContext.delta ?? 0) <= -0.3) {
+    return {
+      eyebrow: "Take care",
+      tone: "care" as HeroTone,
+      title: "Stress looks heavier than usual.",
+      body: "The signal is not a verdict about you. It is just a nudge that this may be a week for simpler expectations and more recovery.",
+    };
+  }
+
   return {
+    eyebrow: "Building a baseline",
+    tone: "steady" as HeroTone,
     title: "You are building a useful weekly baseline.",
     body:
       args.currentStreak >= 3
@@ -573,6 +726,67 @@ function getMonthStory(args: {
   };
 }
 
+function getGuidanceCard(args: {
+  weekCount: number;
+  currentStreak: number;
+  supportiveTag?: { tag: string; count: number };
+  challengingTag?: { tag: string; count: number };
+  strongestContext?: ContextSignal | null;
+  bestWeekday?: { label: string; count: number } | null;
+}): GuidanceCardData {
+  if (args.challengingTag && args.supportiveTag) {
+    return {
+      eyebrow: "What this might mean",
+      title: `Some days may need a softer plan.`,
+      body: `#${args.challengingTag.tag} keeps showing up on harder days, while #${args.supportiveTag.tag} seems to help. You do not need to fix everything, just protect the heavier days a little more.`,
+      prompt: `On the next #${args.challengingTag.tag} day, make room for one small #${args.supportiveTag.tag} moment.`,
+    };
+  }
+
+  if (args.strongestContext?.key === "stress" && (args.strongestContext.delta ?? 0) <= -0.3) {
+    return {
+      eyebrow: "What this might mean",
+      title: "Your harder days may be arriving overloaded.",
+      body: "Stress looks like the clearest drag right now. That does not mean the week is failing, only that your system may need more recovery before the pressure peaks.",
+      prompt: "Pick one small reset before your busiest part of the day.",
+    };
+  }
+
+  if (args.strongestContext?.key === "sleep" && (args.strongestContext.delta ?? 0) >= 0.3) {
+    return {
+      eyebrow: "What this might mean",
+      title: "Sleep may be one of your quiet supports.",
+      body: "The lighter days are lining up with better sleep. That is useful because it gives you something steady to protect when life gets noisy.",
+      prompt: "Treat sleep like support, not a bonus, for the next few days.",
+    };
+  }
+
+  if (args.currentStreak >= 7) {
+    return {
+      eyebrow: "What this might mean",
+      title: "You have been showing up consistently.",
+      body: `A ${args.currentStreak}-day streak gives this page more signal, and it also says something kind about your effort. You are paying attention, even when the week is ordinary.`,
+      prompt: "Look for one small thing that made the steadier days easier to carry.",
+    };
+  }
+
+  if (args.bestWeekday) {
+    return {
+      eyebrow: "What this might mean",
+      title: `${args.bestWeekday.label} may be part of your steadier rhythm.`,
+      body: "One day of the week is already feeling a little easier than the others. That can be a clue about pace, routine, or what you ask from yourself on that day.",
+      prompt: `What felt different about your recent ${args.bestWeekday.label}s?`,
+    };
+  }
+
+  return {
+    eyebrow: "What this might mean",
+    title: "The picture is still forming, and that is okay.",
+    body: `You already have ${args.weekCount} check-ins this week. Even before the patterns feel strong, the habit of noticing is valuable on its own.`,
+    prompt: "Ask yourself what felt a little lighter than expected this week.",
+  };
+}
+
 function buildPatternCards(args: {
   topTag?: { tag: string; count: number };
   challengingTag?: { tag: string; count: number };
@@ -605,7 +819,7 @@ function buildPatternCards(args: {
     cards.push({
       label: "Steadiest day",
       value: `${args.bestWeekday.label}s`,
-      detail: `${args.bestWeekday.count} check-ins on that rhythm`,
+      detail: `${args.bestWeekday.count} check-ins`,
       tone: "neutral",
     });
   }
@@ -615,14 +829,14 @@ function buildPatternCards(args: {
     cards.push({
       label: "Strong combo",
       value: `${capitalize(first)} + ${second}`,
-      detail: `${args.strongestCombo.count} repeated appearances`,
+      detail: `${args.strongestCombo.count} repeated times`,
       tone: args.strongestCombo.tone === "challenging" ? "warm" : "cool",
     });
   } else if (args.topTag) {
     cards.push({
       label: "Most used tag",
       value: `#${args.topTag.tag}`,
-      detail: `${args.topTag.count} total appearances`,
+      detail: `${args.topTag.count} times`,
       tone: "neutral",
     });
   } else if (args.mostCommonMood.mood) {
@@ -646,8 +860,8 @@ function buildEvidenceCards(args: {
   if (args.supportiveTag) {
     cards.push({
       label: "Seems to help this month",
-      title: `#${args.supportiveTag.tag} often showed up on better days.`,
-      detail: `${args.supportiveTag.count} check-ins, about ${Math.abs(args.supportiveTag.deltaFromBaseline).toFixed(1)} points lighter than your usual baseline.`,
+      title: `#${args.supportiveTag.tag} lined up with better days.`,
+      detail: `${args.supportiveTag.count} check-ins, ${Math.abs(args.supportiveTag.deltaFromBaseline).toFixed(1)} points lighter than usual.`,
       tag: args.supportiveTag.tag,
       tone: "supportive",
       confidence: getConfidenceLabel(args.supportiveTag.count),
@@ -657,8 +871,8 @@ function buildEvidenceCards(args: {
   if (args.challengingTag) {
     cards.push({
       label: "Seems harder this month",
-      title: `#${args.challengingTag.tag} often showed up on tougher days.`,
-      detail: `${args.challengingTag.count} check-ins, about ${Math.abs(args.challengingTag.deltaFromBaseline).toFixed(1)} points heavier than your usual baseline.`,
+      title: `#${args.challengingTag.tag} lined up with tougher days.`,
+      detail: `${args.challengingTag.count} check-ins, ${Math.abs(args.challengingTag.deltaFromBaseline).toFixed(1)} points heavier than usual.`,
       tag: args.challengingTag.tag,
       tone: "challenging",
       confidence: getConfidenceLabel(args.challengingTag.count),
@@ -666,6 +880,47 @@ function buildEvidenceCards(args: {
   }
 
   return cards;
+}
+
+function getContextSpotlight(signal: ContextSignal | null): SpotlightCardData | null {
+  if (!signal || signal.delta == null) return null;
+
+  if (signal.key === "stress") {
+    return {
+      label: "Watch this",
+      title: signal.delta <= -0.3 ? "High-stress days land harder." : "Calmer days look a bit lighter.",
+      detail:
+        signal.delta <= -0.3
+          ? `${signal.highCount} higher-stress days stood out more than calmer ones.`
+          : `${signal.lowCount} calmer days look a bit gentler so far.`,
+      tone: signal.delta <= -0.3 ? "challenging" : "neutral",
+      confidence: getSignalConfidenceLabel(signal),
+    };
+  }
+
+  if (signal.key === "sleep") {
+    return {
+      label: "Watch this",
+      title: signal.delta >= 0.3 ? "Better sleep seems to help." : "Sleep is mixed so far.",
+      detail:
+        signal.delta >= 0.3
+          ? `${signal.highCount} better-sleep days felt lighter than low-sleep ones.`
+          : "There is a signal here, but it is still early.",
+      tone: signal.delta >= 0.3 ? "supportive" : "neutral",
+      confidence: getSignalConfidenceLabel(signal),
+    };
+  }
+
+  return {
+    label: "Watch this",
+    title: signal.delta >= 0.3 ? "Higher energy usually helps." : "Energy is mixed so far.",
+    detail:
+      signal.delta >= 0.3
+        ? `${signal.highCount} higher-energy days were usually lighter than low-energy ones.`
+        : "Energy is only showing a light difference right now.",
+    tone: signal.delta >= 0.3 ? "supportive" : "neutral",
+    confidence: getSignalConfidenceLabel(signal),
+  };
 }
 
 function getConfidenceLabel(sampleCount: number) {
@@ -680,26 +935,31 @@ function getSignalMeterValue(signal: ContextSignal | null) {
   return Math.max(0, Math.min(1, normalized));
 }
 
-function getSignalShiftLabel(signal: ContextSignal | null) {
+function getSignalVerdictLabel(signal: ContextSignal | null) {
   if (signal?.delta == null) return "early";
-  if (signal.delta >= 0.6) return "stronger";
-  if (signal.delta >= 0.25) return "better";
-  if (signal.delta <= -0.6) return "harder";
-  if (signal.delta <= -0.25) return "heavier";
-  return "mixed";
+
+  if (signal.key === "stress") {
+    return signal.delta <= -0.3 ? "watch" : "mixed";
+  }
+
+  if (signal.key === "sleep") {
+    return signal.delta >= 0.3 ? "helpful" : "mixed";
+  }
+
+  return signal.delta >= 0.3 ? "helpful" : "mixed";
 }
 
 function getSignalSummary(signal: ContextSignal | null, coverage: ContextCoverage) {
   if (signal?.delta == null) {
     if (coverage.thisWeekCount === 0) return "No check-ins for this signal yet this week.";
-    if (!coverage.enoughThisWeek) return "A few more logs will make this pattern more trustworthy.";
+    if (!coverage.enoughThisWeek) return "A few more logs will make this clearer.";
     return "This is starting to form, but it is still early.";
   }
 
   if (signal.key === "stress") {
     return signal.delta <= -0.3
-      ? "Higher-stress days trend worse than calmer days."
-      : "Stress is showing a softer difference so far.";
+      ? "Higher-stress days tend to land worse."
+      : "Stress is showing only a light difference so far.";
   }
 
   if (signal.key === "sleep") {
@@ -711,6 +971,16 @@ function getSignalSummary(signal: ContextSignal | null, coverage: ContextCoverag
   return signal.delta >= 0.3
     ? "Higher-energy days usually feel better."
     : "Energy is showing only a light difference so far.";
+}
+
+function getSignalConfidenceLine(
+  confidence: string | undefined,
+  signal: ContextSignal | null,
+  coverage: ContextCoverage
+) {
+  if (!confidence) return null;
+  if (!signal) return confidence;
+  return `${confidence} / ${coverage.totalCount} total`;
 }
 
 function getContextDrilldownTarget(signal: ContextSignal | null): {
@@ -738,7 +1008,10 @@ function getComparisonConfidenceLabel(currentCount: number, previousCount: numbe
 export default function InsightsScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const compactCards = width >= 360;
+  const twoUpPatterns = width >= 430;
+  const twoUpSpotlights = width >= 440;
+  const twoUpDetails = width >= 430;
+  const signalCardWidth = Math.min(Math.max(width - 56, 260), 312);
   const today = useMemo(() => new Date(), []);
   const thisMonth = useMemo(
     () => new Date(today.getFullYear(), today.getMonth(), 1),
@@ -807,8 +1080,11 @@ export default function InsightsScreen() {
         currentStreak,
         comparison,
         mostCommonMood,
+        strongestContext,
+        supportiveTag: supportiveTags[0],
+        challengingTag: challengingTags[0],
       }),
-    [weekCount, currentStreak, comparison, mostCommonMood]
+    [weekCount, currentStreak, comparison, mostCommonMood, strongestContext, supportiveTags, challengingTags]
   );
   const monthStory = useMemo(
     () =>
@@ -850,6 +1126,22 @@ export default function InsightsScreen() {
       }),
     [monthSupportiveTags, monthChallengingTags]
   );
+  const contextSpotlight = useMemo(
+    () => getContextSpotlight(strongestContext),
+    [strongestContext]
+  );
+  const guidanceCard = useMemo(
+    () =>
+      getGuidanceCard({
+        weekCount,
+        currentStreak,
+        supportiveTag: supportiveTags[0],
+        challengingTag: challengingTags[0],
+        strongestContext,
+        bestWeekday,
+      }),
+    [weekCount, currentStreak, supportiveTags, challengingTags, strongestContext, bestWeekday]
+  );
   const sleepTarget = useMemo(() => getContextDrilldownTarget(sleepSignal), [sleepSignal]);
   const stressTarget = useMemo(() => getContextDrilldownTarget(stressSignal), [stressSignal]);
   const energyTarget = useMemo(() => getContextDrilldownTarget(energySignal), [energySignal]);
@@ -877,43 +1169,39 @@ export default function InsightsScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.section}>
-            <SectionHeader
-              title="Overview"
-              subtitle="The main takeaway first, then the basics."
-            />
+            <SectionHeader title="This week" />
 
             <HeroCard
-              eyebrow="This week"
+              eyebrow={weekStory.eyebrow}
               title={weekStory.title}
               body={weekStory.body}
               action={actionHint}
               mood={mostCommonMood.mood}
+              tone={weekStory.tone}
             />
 
-            <View style={styles.grid}>
-              <StatCard
+            <GuidanceCard {...guidanceCard} />
+
+            <View style={styles.statsPanel}>
+              <StatPill
                 label="This week"
                 value={`${weekCount}`}
                 caption="days logged"
-                compact={compactCards}
               />
-              <StatCard
+              <StatPill
                 label="This month"
                 value={`${monthCount}`}
                 caption="days logged"
-                compact={compactCards}
               />
-              <StatCard
+              <StatPill
                 label="Streak"
                 value={`${currentStreak}`}
                 caption="current run"
-                compact={compactCards}
               />
-              <StatCard
+              <StatPill
                 label="Best run"
                 value={`${longestStreak}`}
                 caption="longest streak"
-                compact={compactCards}
               />
             </View>
 
@@ -932,27 +1220,48 @@ export default function InsightsScreen() {
           </View>
 
           <View style={styles.section}>
-            <SectionHeader
-              title="Patterns"
-              subtitle="A quick look at what keeps showing up."
-            />
+            <SectionHeader title="What stands out" />
 
-            {evidenceCards.length > 0 ? (
-              <View style={styles.evidenceStack}>
-                {evidenceCards.map((card) => (
-                  <EvidenceCard
-                    key={`${card.label}-${card.tag}`}
-                    {...card}
-                    onPress={() =>
-                      router.push({
-                        pathname: "/history",
-                        params: { tag: card.tag, month: currentMonthKey },
-                      })
-                    }
-                  />
-                ))}
-              </View>
-            ) : null}
+            <View style={styles.grid}>
+              {evidenceCards.map((card) => (
+                <SpotlightCard
+                  key={`${card.label}-${card.tag}`}
+                  label={card.label}
+                  title={card.title}
+                  detail={card.detail}
+                  tone={card.tone}
+                  confidence={card.confidence}
+                  twoUp={twoUpSpotlights}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/history",
+                      params: { tag: card.tag, month: currentMonthKey },
+                    })
+                  }
+                />
+              ))}
+              {contextSpotlight ? (
+                <SpotlightCard
+                  {...contextSpotlight}
+                  twoUp={twoUpSpotlights}
+                  onPress={
+                    strongestContext
+                      ? () => {
+                          const target = getContextDrilldownTarget(strongestContext);
+                          if (!target) return;
+                          router.push({
+                            pathname: "/history",
+                            params: {
+                              contextKey: target.key,
+                              contextBand: target.band,
+                            },
+                          });
+                        }
+                      : null
+                  }
+                />
+              ) : null}
+            </View>
 
             <View style={styles.grid}>
               {patternCards.map((card) => (
@@ -962,26 +1271,27 @@ export default function InsightsScreen() {
                   value={card.value}
                   detail={card.detail}
                   tone={card.tone}
-                  compact={compactCards}
+                  twoUp={twoUpPatterns}
                 />
               ))}
-
-              <WeekdayRhythmCard items={weekdayInsights} />
             </View>
-          </View>
 
-          <View style={styles.section}>
-            <SectionHeader
-              title="Context"
-              subtitle="How sleep, stress, and energy seem to affect your days."
-            />
+            <WeekdayRhythmCard items={weekdayInsights} />
 
-            <View style={styles.signalGrid}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.signalRail}
+              decelerationRate="fast"
+              snapToInterval={signalCardWidth + spacing.sm}
+              snapToAlignment="start"
+            >
               <SignalCard
                 title="Sleep"
                 signal={sleepSignal}
                 coverage={sleepCoverage}
                 confidence={getSignalConfidenceLabel(sleepSignal)}
+                cardWidth={signalCardWidth}
                 onPress={
                   sleepTarget
                     ? () =>
@@ -1000,6 +1310,7 @@ export default function InsightsScreen() {
                 signal={stressSignal}
                 coverage={stressCoverage}
                 confidence={getSignalConfidenceLabel(stressSignal)}
+                cardWidth={signalCardWidth}
                 onPress={
                   stressTarget
                     ? () =>
@@ -1018,6 +1329,7 @@ export default function InsightsScreen() {
                 signal={energySignal}
                 coverage={energyCoverage}
                 confidence={getSignalConfidenceLabel(energySignal)}
+                cardWidth={signalCardWidth}
                 onPress={
                   energyTarget
                     ? () =>
@@ -1031,40 +1343,21 @@ export default function InsightsScreen() {
                     : null
                 }
               />
-            </View>
+            </ScrollView>
           </View>
 
           <View style={styles.section}>
-            <SectionHeader
-              title="Details"
-              subtitle="Extra details if you want a closer look."
-            />
+            <SectionHeader title="Breakdown" />
 
             <MoodMixStripCard title="Mood mix this week" summary={weekSummary} />
 
             <View style={styles.grid}>
               <MoodMixCard
-                title="This week"
-                summary={weekSummary}
-                compact={compactCards}
-              />
-              <MoodMixCard
                 title="This month"
                 summary={monthSummary}
-                compact={compactCards}
+                compact={twoUpDetails}
               />
-              <TagListCard
-                title="Top tags"
-                items={topTags}
-                emptyLabel="Add tags to reveal your recurring contexts."
-                compact={compactCards}
-              />
-              <TagListCard
-                title="Harder-day tags"
-                items={hardDayTags}
-                emptyLabel="Tag lower-mood days to surface clearer tougher-day patterns."
-                compact={compactCards}
-              />
+              <TagListCard topTags={topTags} hardDayTags={hardDayTags} />
             </View>
           </View>
         </ScrollView>
@@ -1085,7 +1378,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
     paddingBottom: spacing.xl,
-    gap: spacing.xl,
+    gap: spacing.lg,
   },
   section: {
     gap: spacing.md,
@@ -1101,20 +1394,30 @@ const styles = StyleSheet.create({
   sectionSubtitle: {
     ...typography.caption,
     color: colors.mutedText,
-    lineHeight: 18,
+    lineHeight: 17,
   },
   heroCard: {
-    backgroundColor: "#EEF4FF",
-    borderRadius: 28,
+    backgroundColor: "#EAF1FF",
+    borderRadius: 26,
     borderWidth: 1,
-    borderColor: "#D6E4FF",
+    borderColor: "#D2E2FF",
     padding: spacing.lg,
-    gap: spacing.sm,
+    gap: spacing.xs,
     shadowColor: "#8EB3FF",
-    shadowOpacity: 0.14,
-    shadowOffset: { width: 0, height: 14 },
-    shadowRadius: 26,
+    shadowOpacity: 0.12,
+    shadowOffset: { width: 0, height: 12 },
+    shadowRadius: 22,
     elevation: 4,
+  },
+  heroCardLift: {
+    backgroundColor: "#EEF9F1",
+    borderColor: "#CFE7D4",
+    shadowColor: "#7BC18E",
+  },
+  heroCardCare: {
+    backgroundColor: "#FFF4EA",
+    borderColor: "#F3D4B7",
+    shadowColor: "#E7A56C",
   },
   heroTopRow: {
     flexDirection: "row",
@@ -1128,6 +1431,12 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.7,
     fontWeight: "700",
+  },
+  heroEyebrowLift: {
+    color: "#2F7A47",
+  },
+  heroEyebrowCare: {
+    color: "#A35A1F",
   },
   heroMoodBadge: {
     flexDirection: "row",
@@ -1148,15 +1457,27 @@ const styles = StyleSheet.create({
     textTransform: "capitalize",
   },
   heroTitle: {
-    fontSize: 30,
-    lineHeight: 38,
+    fontSize: 28,
+    lineHeight: 34,
     fontWeight: "800",
     color: "#162033",
+  },
+  heroTitleLift: {
+    color: "#163321",
+  },
+  heroTitleCare: {
+    color: "#5A2C13",
   },
   heroBody: {
     ...typography.body,
     color: "#52607A",
-    lineHeight: 23,
+    lineHeight: 21,
+  },
+  heroBodyLift: {
+    color: "#446152",
+  },
+  heroBodyCare: {
+    color: "#805333",
   },
   heroActionPill: {
     alignSelf: "flex-start",
@@ -1164,21 +1485,112 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: "#162033",
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 9,
+  },
+  heroActionPillLift: {
+    backgroundColor: "#1F5F35",
+  },
+  heroActionPillCare: {
+    backgroundColor: "#6E3A17",
   },
   heroActionText: {
     color: "#FFFFFF",
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "700",
+  },
+  heroActionTextLift: {
+    color: "#F7FFF8",
+  },
+  heroActionTextCare: {
+    color: "#FFF7F0",
+  },
+  guidanceCard: {
+    backgroundColor: "#FFF9EE",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#F3DEC0",
+    padding: spacing.md,
+    gap: 8,
+  },
+  guidanceEyebrow: {
+    ...typography.caption,
+    color: "#9A5A23",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    fontWeight: "700",
+  },
+  guidanceTitle: {
+    fontSize: 20,
+    lineHeight: 25,
+    fontWeight: "800",
+    color: "#7C2D12",
+  },
+  guidanceBody: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#8E5D2C",
+  },
+  promptCard: {
+    marginTop: 4,
+    borderRadius: 16,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    gap: 3,
+  },
+  promptLabel: {
+    ...typography.caption,
+    color: "#6B7280",
+    textTransform: "uppercase",
+    letterSpacing: 0.45,
+    fontWeight: "700",
+  },
+  promptText: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.text,
+    fontWeight: "700",
+  },
+  statsPanel: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
+  statPill: {
+    flexGrow: 1,
+    minWidth: 140,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#E4E8F2",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 2,
+  },
+  statPillLabel: {
+    ...typography.caption,
+    color: colors.mutedText,
+    textTransform: "uppercase",
+    letterSpacing: 0.45,
+  },
+  statPillValue: {
+    fontSize: 22,
+    lineHeight: 26,
+    fontWeight: "800",
+    color: colors.text,
+  },
+  statPillNote: {
+    fontSize: 12,
+    color: "#667085",
   },
   compareCard: {
     width: "100%",
-    backgroundColor: "#FFF8EC",
-    borderRadius: 22,
+    backgroundColor: "#FFF6E7",
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: "#F3D8AF",
     padding: spacing.md,
-    gap: 6,
+    gap: 5,
   },
   compareCardPressable: {
     borderColor: "#EBCB96",
@@ -1191,14 +1603,14 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   compareTitle: {
-    fontSize: 22,
-    lineHeight: 28,
+    fontSize: 20,
+    lineHeight: 25,
     fontWeight: "800",
     color: "#7C2D12",
   },
   compareBody: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 19,
     color: "#8E5D2C",
   },
   compareLinkPill: {
@@ -1224,38 +1636,57 @@ const styles = StyleSheet.create({
   fullCard: {
     width: "100%",
   },
-  statCard: {
+  spotlightCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    gap: 6,
+  },
+  spotlightCardSupportive: {
+    backgroundColor: "#F2FAF3",
+    borderColor: "#CDE9C8",
+  },
+  spotlightCardChallenging: {
+    backgroundColor: "#FFF5EA",
+    borderColor: "#F3D0A6",
+  },
+  spotlightCardNeutral: {
+    backgroundColor: "#F7F8FC",
+    borderColor: "#E4E8F2",
+  },
+  spotlightLabel: {
+    ...typography.caption,
+    color: "#5F6B7A",
+    textTransform: "uppercase",
+    letterSpacing: 0.45,
+    fontWeight: "700",
+  },
+  spotlightTitle: {
+    fontSize: 17,
+    lineHeight: 21,
+    fontWeight: "800",
+    color: colors.text,
+  },
+  spotlightDetail: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: "#5F6B7A",
+  },
+  spotlightLink: {
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#1D4ED8",
+  },
+  patternCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 20,
     borderWidth: 1,
     borderColor: "#E4E8F2",
     paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingVertical: 13,
     gap: 4,
-  },
-  statLabel: {
-    ...typography.caption,
-    color: colors.mutedText,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  statValue: {
-    fontSize: 24,
-    lineHeight: 28,
-    fontWeight: "800",
-    color: colors.text,
-  },
-  statNote: {
-    fontSize: 13,
-    color: "#667085",
-  },
-  patternCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: "#E4E8F2",
-    padding: spacing.md,
-    gap: spacing.xs,
   },
   patternCardCool: {
     backgroundColor: "#F3F7FF",
@@ -1273,38 +1704,14 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   patternValue: {
-    fontSize: 20,
-    lineHeight: 26,
+    fontSize: 17,
+    lineHeight: 21,
     fontWeight: "800",
     color: colors.text,
   },
   patternDetail: {
-    fontSize: 13,
-    lineHeight: 18,
-    color: "#5F6B7A",
-  },
-  evidenceStack: {
-    gap: spacing.sm,
-  },
-  evidenceCard: {
-    borderRadius: 22,
-    borderWidth: 1,
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  evidenceCardSupportive: {
-    backgroundColor: "#F3FBF3",
-    borderColor: "#CDE9C8",
-  },
-  evidenceCardChallenging: {
-    backgroundColor: "#FFF7ED",
-    borderColor: "#F6D8AD",
-  },
-  evidenceLabel: {
-    ...typography.caption,
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-    fontWeight: "700",
+    fontSize: 12,
+    lineHeight: 16,
     color: "#5F6B7A",
   },
   confidenceBadge: {
@@ -1319,39 +1726,18 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
     color: "#5F6B7A",
   },
-  evidenceTitle: {
-    fontSize: 20,
-    lineHeight: 26,
-    fontWeight: "800",
-    color: colors.text,
-  },
-  evidenceDetail: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: "#5F6B7A",
-  },
-  evidenceButton: {
-    alignSelf: "flex-start",
-    borderRadius: 999,
-    backgroundColor: "#162033",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  evidenceButtonText: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  signalGrid: {
+  signalRail: {
     gap: spacing.sm,
+    paddingRight: spacing.sm,
   },
   signalCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 20,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: "#E4E8F2",
-    padding: spacing.md,
-    gap: spacing.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 6,
   },
   signalCardPressable: {
     borderColor: "#D6E4FF",
@@ -1366,11 +1752,18 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   signalShift: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "800",
     textTransform: "uppercase",
     letterSpacing: 0.5,
     color: "#5F6B7A",
+  },
+  signalConfidence: {
+    fontSize: 11,
+    color: "#7A8494",
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.25,
   },
   signalTrack: {
     position: "relative",
@@ -1400,27 +1793,14 @@ const styles = StyleSheet.create({
     borderColor: "#FFFFFF",
   },
   signalSummary: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
     color: "#5F6B7A",
-  },
-  signalLinkPill: {
-    alignSelf: "flex-start",
-    borderRadius: 999,
-    backgroundColor: "#EEF4FF",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
   },
   signalLinkText: {
     fontSize: 12,
     fontWeight: "700",
     color: "#1D4ED8",
-  },
-  signalMetaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.sm,
   },
   signalMetaText: {
     fontSize: 12,
@@ -1429,11 +1809,11 @@ const styles = StyleSheet.create({
   stripCard: {
     width: "100%",
     backgroundColor: "#FFFFFF",
-    borderRadius: 22,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: "#E4E8F2",
     padding: spacing.md,
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   stripTitle: {
     ...typography.subtitle,
@@ -1487,7 +1867,7 @@ const styles = StyleSheet.create({
   },
   weekdayTrack: {
     width: "100%",
-    height: 78,
+    height: 72,
     alignItems: "center",
     justifyContent: "flex-end",
   },
@@ -1502,7 +1882,7 @@ const styles = StyleSheet.create({
   },
   detailCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 22,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: "#E4E8F2",
     padding: spacing.md,
@@ -1558,6 +1938,16 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: spacing.sm,
   },
+  tagSection: {
+    gap: spacing.sm,
+  },
+  tagSectionLabel: {
+    ...typography.caption,
+    color: "#6A7283",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    fontWeight: "700",
+  },
   tagPill: {
     flexDirection: "row",
     alignItems: "center",
@@ -1566,6 +1956,17 @@ const styles = StyleSheet.create({
     backgroundColor: "#EEF4FF",
     borderWidth: 1,
     borderColor: "#D7E3FF",
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  tagPillWarm: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderRadius: 999,
+    backgroundColor: "#FFF4E7",
+    borderWidth: 1,
+    borderColor: "#F3D0A6",
     paddingHorizontal: 12,
     paddingVertical: 9,
   },
@@ -1604,3 +2005,4 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 });
+
