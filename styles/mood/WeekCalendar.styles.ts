@@ -117,6 +117,60 @@ export const weekCalendarStyles = StyleSheet.create({
     color: colors.mutedText,
   },
 
+  warningStack: {
+    gap: 10,
+  },
+
+  warningCard: {
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 15,
+    backgroundColor: "#FFF7ED",
+    borderWidth: 1,
+    borderColor: "#F6D8AD",
+    gap: 6,
+  },
+
+  warningCardPressable: {
+    borderColor: "#F0C98E",
+  },
+
+  warningLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
+    color: "#B45309",
+  },
+
+  warningTitle: {
+    fontSize: 17,
+    lineHeight: 24,
+    fontWeight: "800",
+    color: "#7C2D12",
+  },
+
+  warningDetail: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: "#9A5A23",
+  },
+
+  warningLinkPill: {
+    alignSelf: "flex-start",
+    marginTop: 2,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.78)",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+
+  warningLinkText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#9A3412",
+  },
+
   reflectionCard: {
     borderRadius: 18,
     paddingHorizontal: 16,

@@ -1,8 +1,10 @@
 import { useMoodEntries } from "@/hooks";
 import { colors, radius, spacing, typography } from "@/styles";
-import type { Mood, MoodEntry } from "@/types";
+import type { Mood, MoodContextKey, MoodEntry } from "@/types";
+import type { ContextBand } from "@/utils/moodStats";
+import { matchesContextBand } from "@/utils/moodStats";
 import { moodToEmoji } from "@/utils/moodUi";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useDeferredValue, useEffect, useMemo, useState } from "react";
 import {
   FlatList,
@@ -17,6 +19,19 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 type MoodFilter = Mood | "all";
 type MonthFilter = string | "all";
+type ContextFilter = "all" | `${ContextBand}:${MoodContextKey}`;
+
+const CONTEXT_FILTER_OPTIONS: {
+  value: ContextFilter;
+  label: string;
+}[] = [
+  { value: "all", label: "All" },
+  { value: "high:stress", label: "High stress" },
+  { value: "low:sleep", label: "Low sleep" },
+  { value: "high:sleep", label: "Good sleep" },
+  { value: "low:energy", label: "Low energy" },
+  { value: "high:energy", label: "High energy" },
+];
 
 function getMonthKey(date: string) {
   return date.slice(0, 7);
@@ -65,6 +80,38 @@ function matchesSearch(entry: MoodEntry, query: string) {
   ];
 
   return searchableParts.some((part) => part.toLowerCase().includes(query));
+}
+
+function isMoodParam(value: string): value is Mood | "all" {
+  return (
+    value === "all" ||
+    value === "happy" ||
+    value === "neutral" ||
+    value === "sad" ||
+    value === "angry" ||
+    value === "anxious"
+  );
+}
+
+function parseContextFilter(
+  key?: string,
+  band?: string
+): ContextFilter {
+  if (
+    (key === "sleep" || key === "stress" || key === "energy") &&
+    (band === "low" || band === "high")
+  ) {
+    return `${band}:${key}`;
+  }
+
+  return "all";
+}
+
+function matchesContextFilter(entry: MoodEntry, filter: ContextFilter) {
+  if (filter === "all") return true;
+
+  const [band, key] = filter.split(":") as [ContextBand, MoodContextKey];
+  return matchesContextBand(entry, key, band);
 }
 
 function FilterChip({
@@ -137,10 +184,19 @@ function EntryCard({
 
 export default function JournalScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{
+    tag?: string;
+    mood?: Mood | "all";
+    month?: string | "all";
+    q?: string;
+    contextKey?: MoodContextKey;
+    contextBand?: ContextBand;
+  }>();
   const { entries, isLoading } = useMoodEntries();
   const [selectedMood, setSelectedMood] = useState<MoodFilter>("all");
   const [selectedMonth, setSelectedMonth] = useState<MonthFilter>("all");
   const [selectedTag, setSelectedTag] = useState<string | "all">("all");
+  const [selectedContext, setSelectedContext] = useState<ContextFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const deferredSearchQuery = useDeferredValue(searchQuery);
 
@@ -166,6 +222,26 @@ export default function JournalScreen() {
     setSelectedTag("all");
   }, [selectedTag, tagOptions]);
 
+  useEffect(() => {
+    if (typeof params.tag === "string" && params.tag.trim()) {
+      setSelectedTag(params.tag.trim().toLowerCase());
+    }
+
+    if (typeof params.mood === "string" && isMoodParam(params.mood)) {
+      setSelectedMood(params.mood);
+    }
+
+    if (typeof params.month === "string" && params.month.trim()) {
+      setSelectedMonth(params.month);
+    }
+
+    if (typeof params.q === "string") {
+      setSearchQuery(params.q);
+    }
+
+    setSelectedContext(parseContextFilter(params.contextKey, params.contextBand));
+  }, [params.tag, params.mood, params.month, params.q, params.contextKey, params.contextBand]);
+
   const filteredEntries = useMemo(() => {
     const normalizedQuery = normalizeQuery(deferredSearchQuery);
 
@@ -173,16 +249,18 @@ export default function JournalScreen() {
       if (selectedMood !== "all" && entry.mood !== selectedMood) return false;
       if (selectedMonth !== "all" && getMonthKey(entry.date) !== selectedMonth) return false;
       if (selectedTag !== "all" && !(entry.tags ?? []).includes(selectedTag)) return false;
+      if (!matchesContextFilter(entry, selectedContext)) return false;
       if (!matchesSearch(entry, normalizedQuery)) return false;
       return true;
     });
-  }, [entries, selectedMood, selectedMonth, selectedTag, deferredSearchQuery]);
+  }, [entries, selectedMood, selectedMonth, selectedTag, selectedContext, deferredSearchQuery]);
 
   const hasEntries = entries.length > 0;
   const hasFilters =
     selectedMood !== "all" ||
     selectedMonth !== "all" ||
     selectedTag !== "all" ||
+    selectedContext !== "all" ||
     normalizeQuery(searchQuery).length > 0;
   const entryLabel = filteredEntries.length === 1 ? "entry" : "entries";
 
@@ -190,7 +268,7 @@ export default function JournalScreen() {
     <View style={styles.headerWrap}>
       <Text style={styles.title}>Journal</Text>
       <Text style={styles.subtitle}>
-        Browse your past check-ins, filter them, and reopen any day when you want to revisit it.
+        Browse your past check-ins, filter them, and reopen the days behind each pattern.
       </Text>
 
       <TextInput
@@ -236,6 +314,17 @@ export default function JournalScreen() {
             label={`#${tag}`}
             active={selectedTag === tag}
             onPress={() => setSelectedTag(tag)}
+          />
+        ))}
+      </FilterSection>
+
+      <FilterSection title="Signal">
+        {CONTEXT_FILTER_OPTIONS.map((option) => (
+          <FilterChip
+            key={option.value}
+            label={option.label}
+            active={selectedContext === option.value}
+            onPress={() => setSelectedContext(option.value)}
           />
         ))}
       </FilterSection>
@@ -291,6 +380,7 @@ export default function JournalScreen() {
                     setSelectedMood("all");
                     setSelectedMonth("all");
                     setSelectedTag("all");
+                    setSelectedContext("all");
                     setSearchQuery("");
                   }}
                   style={styles.resetButton}

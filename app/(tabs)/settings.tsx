@@ -8,6 +8,7 @@ import {
   exportBackupPayloadAsync,
   importBackupPayloadAsync,
 } from "@/utils/backup";
+import { buildReadableSummary } from "@/utils/shareSummary";
 import {
   REMINDER_WEEKDAY_OPTIONS,
   cancelDailyMoodReminderAsync,
@@ -92,7 +93,7 @@ function PillButton({
 }
 
 export default function SettingsScreen() {
-  const { refresh: refreshEntries } = useMoodEntries();
+  const { entries, refresh: refreshEntries } = useMoodEntries();
   const {
     settings,
     isLoading,
@@ -235,6 +236,34 @@ export default function SettingsScreen() {
     }
 
     Alert.alert("Backup saved", `Backup file created:\n${backupFile.uri}`);
+  };
+
+  const handleShareSummary = async () => {
+    if (entries.length === 0) {
+      Alert.alert("No summary yet", "Add a few check-ins first so there is something meaningful to share.");
+      return;
+    }
+
+    const summaryFile = new File(
+      Paths.document,
+      `mood-tracker-summary-${new Date().toISOString().slice(0, 10)}.txt`
+    );
+    summaryFile.create({
+      intermediates: true,
+      overwrite: true,
+    });
+    summaryFile.write(buildReadableSummary(entries));
+
+    const canShare = await Sharing.isAvailableAsync();
+    if (canShare) {
+      await Sharing.shareAsync(summaryFile.uri, {
+        mimeType: "text/plain",
+        dialogTitle: "Share mood summary",
+      });
+      return;
+    }
+
+    Alert.alert("Summary saved", `Summary file created:\n${summaryFile.uri}`);
   };
 
   const pickBackupFileText = async () => {
@@ -487,18 +516,23 @@ export default function SettingsScreen() {
 
         <Section
           title="Backup and restore"
-          subtitle="Export your data as a backup file, then import that file later to merge or fully restore."
+          subtitle="Export a backup file, share a readable summary, or restore your data later."
         >
           <View style={styles.card}>
             <Pressable onPress={() => void handleExport()} style={styles.secondaryButton}>
               <Text style={styles.secondaryButtonText}>Export backup file</Text>
             </Pressable>
 
+            <Pressable onPress={() => void handleShareSummary()} style={styles.secondaryButton}>
+              <Text style={styles.secondaryButtonText}>Share readable summary</Text>
+            </Pressable>
+
             <View style={styles.backupInfoCard}>
               <Text style={styles.backupInfoTitle}>How it works</Text>
               <Text style={styles.backupInfoBody}>
                 Export creates a `.json` backup file and opens the share sheet. Import and restore
-                will open a file picker so you can choose that backup file later.
+                will open a file picker so you can choose that backup file later. Share readable
+                summary creates a plain-language `.txt` recap instead.
               </Text>
             </View>
 

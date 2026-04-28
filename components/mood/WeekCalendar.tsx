@@ -4,8 +4,10 @@ import {
   getEntriesForWeek,
   getTopTags,
   getWeekComparison,
+  getWeekWarnings,
 } from "@/utils/moodStats";
 import { moodToEmoji } from "@/utils/moodUi";
+import { useRouter } from "expo-router";
 import React, { useMemo } from "react";
 import { Pressable, Text, View } from "react-native";
 
@@ -113,6 +115,7 @@ export function WeekCalendar({
   entriesMap: Record<string, MoodEntry>;
   onSelectDate: (date: string) => void;
 }) {
+  const router = useRouter();
   const days = useMemo(() => {
     const base = new Date(anchorDate);
     const start = addDays(base, -base.getDay());
@@ -140,6 +143,10 @@ export function WeekCalendar({
 
   const loggedDays = useMemo(
     () => countLoggedDaysInWeek(entriesMap, anchorDate),
+    [entriesMap, anchorDate]
+  );
+  const warnings = useMemo(
+    () => getWeekWarnings(Object.values(entriesMap), anchorDate),
     [entriesMap, anchorDate]
   );
 
@@ -180,6 +187,46 @@ export function WeekCalendar({
           <Text style={styles.headlineText}>{headline.title}</Text>
           <Text style={styles.headlineSubtext}>{headline.subtitle}</Text>
         </View>
+
+        {warnings.length > 0 ? (
+          <View style={styles.warningStack}>
+            {warnings.map((warning) => {
+              const canOpen = warning.key && warning.band;
+
+              return (
+                <Pressable
+                  key={warning.id}
+                  disabled={!canOpen}
+                  onPress={
+                    canOpen
+                      ? () =>
+                          router.push({
+                            pathname: "/history",
+                            params: {
+                              contextKey: warning.key,
+                              contextBand: warning.band,
+                            },
+                          })
+                      : undefined
+                  }
+                  style={[
+                    styles.warningCard,
+                    canOpen ? styles.warningCardPressable : null,
+                  ]}
+                >
+                  <Text style={styles.warningLabel}>What to watch</Text>
+                  <Text style={styles.warningTitle}>{warning.title}</Text>
+                  <Text style={styles.warningDetail}>{warning.detail}</Text>
+                  {canOpen ? (
+                    <View style={styles.warningLinkPill}>
+                      <Text style={styles.warningLinkText}>View matching days</Text>
+                    </View>
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
 
         <View style={styles.reflectionCard}>
           <Text style={styles.reflectionLabel}>Reflection prompt</Text>

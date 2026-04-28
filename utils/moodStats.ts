@@ -23,6 +23,8 @@ export type ContextSignal = {
   delta: number | null;
 };
 
+export type ContextBand = "low" | "high";
+
 export type ContextCoverage = {
   key: MoodContextKey;
   totalCount: number;
@@ -46,12 +48,22 @@ export type WeekComparison = {
   delta: number | null;
 };
 
+export type MonthComparison = WeekComparison;
+
 export type ComboHighlight = {
   features: [string, string];
   count: number;
   averageScore: number;
   deltaFromBaseline: number;
   tone: "supportive" | "challenging";
+};
+
+export type WeekWarning = {
+  id: string;
+  title: string;
+  detail: string;
+  key?: MoodContextKey;
+  band?: ContextBand;
 };
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
@@ -99,6 +111,10 @@ function isSameMonth(date: Date, month: Date) {
   );
 }
 
+function shiftMonth(month: Date, delta: number) {
+  return new Date(month.getFullYear(), month.getMonth() + delta, 1);
+}
+
 function incrementMood(summary: MoodSummary, mood: Mood) {
   summary[mood] += 1;
 }
@@ -110,6 +126,10 @@ function average(numbers: number[]) {
 
 function roundToTenth(value: number) {
   return Math.round(value * 10) / 10;
+}
+
+function isHardMood(mood: Mood) {
+  return mood === "sad" || mood === "anxious" || mood === "angry";
 }
 
 function getContextFeature(key: MoodContextKey, value: MoodEntry[MoodContextKey]) {
@@ -214,6 +234,18 @@ export function getEntriesForWeek(
   });
 }
 
+export function getEntriesForMonth(
+  entries: MoodEntry[],
+  month: Date,
+  monthOffset = 0
+): MoodEntry[] {
+  const targetMonth = shiftMonth(month, monthOffset);
+
+  return entries.filter((entry) =>
+    isSameMonth(parseISODateLocal(entry.date), targetMonth)
+  );
+}
+
 export function getAverageMoodScore(entries: MoodEntry[]) {
   const score = average(entries.map((entry) => MOOD_SCORE[entry.mood]));
   return score == null ? null : roundToTenth(score);
@@ -232,6 +264,28 @@ export function getWeekComparison(
   return {
     currentCount: currentWeekEntries.length,
     previousCount: previousWeekEntries.length,
+    currentAverageScore,
+    previousAverageScore,
+    delta:
+      currentAverageScore == null || previousAverageScore == null
+        ? null
+        : roundToTenth(currentAverageScore - previousAverageScore),
+  };
+}
+
+export function getMonthComparison(
+  entries: MoodEntry[],
+  month: Date
+): MonthComparison {
+  const currentMonthEntries = getEntriesForMonth(entries, month, 0);
+  const previousMonthEntries = getEntriesForMonth(entries, month, -1);
+
+  const currentAverageScore = getAverageMoodScore(currentMonthEntries);
+  const previousAverageScore = getAverageMoodScore(previousMonthEntries);
+
+  return {
+    currentCount: currentMonthEntries.length,
+    previousCount: previousMonthEntries.length,
     currentAverageScore,
     previousAverageScore,
     delta:
@@ -463,6 +517,16 @@ export function getContextSignals(entries: MoodEntry[]) {
     .sort((a, b) => Math.abs(b.delta ?? 0) - Math.abs(a.delta ?? 0));
 }
 
+export function matchesContextBand(
+  entry: MoodEntry,
+  key: MoodContextKey,
+  band: ContextBand
+) {
+  const value = entry[key];
+  if (value == null) return false;
+  return band === "low" ? value <= 2 : value >= 4;
+}
+
 export function getContextCoverage(
   entries: MoodEntry[],
   key: MoodContextKey,
@@ -572,4 +636,73 @@ export function getWeekdayInsights(
       averageScore: roundToTenth(bucket.totalScore / bucket.count),
     }))
     .sort((a, b) => b.averageScore - a.averageScore);
+}
+
+export function getWeekWarnings(
+  entries: MoodEntry[],
+  anchorDate: Date
+): WeekWarning[] {
+  const currentWeekEntries = getEntriesForWeek(entries, anchorDate).sort((a, b) =>
+    a.date > b.date ? 1 : -1
+  );
+
+  if (currentWeekEntries.length === 0) return [];
+
+  const warnings: WeekWarning[] = [];
+  const comparison = getWeekComparison(entries, anchorDate);
+
+  if (
+    currentWeekEntries.length >= 3 &&
+    comparison.previousCount >= 3 &&
+    comparison.delta != null &&
+    comparison.delta <= -0.8
+  ) {
+    warnings.push({
+      id: "weekly-drop",
+      title: "This week is landing heavier than last week.",
+      detail: "A gentler plan might help before the week gets any tighter.",
+    });
+  }
+
+  let hardStreak = 0;
+  for (let i = currentWeekEntries.length - 1; i >= 0; i -= 1) {
+    if (!isHardMood(currentWeekEntries[i].mood)) break;
+    hardStreak += 1;
+  }
+
+  if (hardStreak >= 3) {
+    warnings.push({
+      id: "hard-streak",
+      title: "A few harder days have stacked up.",
+      detail: `${hardStreak} tough check-ins in a row is a good moment to slow the pace a little.`,
+    });
+  }
+
+  const highStressEntries = currentWeekEntries.filter((entry) =>
+    matchesContextBand(entry, "stress", "high")
+  );
+  if (highStressEntries.length >= 2) {
+    warnings.push({
+      id: "stress-warning",
+      title: "High-stress days are piling up this week.",
+      detail: `${highStressEntries.length} days logged with high stress. It may help to protect a reset sooner.`,
+      key: "stress",
+      band: "high",
+    });
+  }
+
+  const lowSleepEntries = currentWeekEntries.filter((entry) =>
+    matchesContextBand(entry, "sleep", "low")
+  );
+  if (lowSleepEntries.length >= 2) {
+    warnings.push({
+      id: "sleep-warning",
+      title: "Low-sleep days are showing up more this week.",
+      detail: `${lowSleepEntries.length} days logged with lower sleep. A calmer week might matter more right now.`,
+      key: "sleep",
+      band: "low",
+    });
+  }
+
+  return warnings.slice(0, 2);
 }

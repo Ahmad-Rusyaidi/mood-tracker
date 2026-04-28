@@ -1,6 +1,6 @@
 import { useMoodEntries } from "@/hooks";
 import { colors, spacing, typography } from "@/styles";
-import type { Mood } from "@/types";
+import type { Mood, MoodContextKey } from "@/types";
 import {
   countLoggedDaysInMonth,
   countLoggedDaysInWeek,
@@ -8,6 +8,7 @@ import {
   getContextCoverage,
   getContextSignals,
   getLongestMoodStreak,
+  getMonthComparison,
   getMoodStreak,
   getMonthSummary,
   getMostCommonMood,
@@ -22,10 +23,13 @@ import {
   type ContextCoverage,
   type ContextSignal,
   type MoodSummary,
+  type TagAssociation,
 } from "@/utils/moodStats";
 import { moodToEmoji } from "@/utils/moodUi";
+import { useRouter } from "expo-router";
 import React, { useMemo } from "react";
 import {
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -50,6 +54,14 @@ type PatternCardData = {
   value: string;
   detail: string;
   tone: "neutral" | "cool" | "warm";
+};
+
+type EvidenceCardData = {
+  label: string;
+  title: string;
+  detail: string;
+  tag: string;
+  tone: "supportive" | "challenging";
 };
 
 function SectionHeader({
@@ -104,6 +116,24 @@ function HeroCard({
   );
 }
 
+function CompareCard({
+  eyebrow,
+  title,
+  body,
+}: {
+  eyebrow: string;
+  title: string;
+  body: string;
+}) {
+  return (
+    <View style={styles.compareCard}>
+      <Text style={styles.compareEyebrow}>{eyebrow}</Text>
+      <Text style={styles.compareTitle}>{title}</Text>
+      <Text style={styles.compareBody}>{body}</Text>
+    </View>
+  );
+}
+
 function StatCard({
   label,
   value,
@@ -147,21 +177,52 @@ function PatternCard({
   );
 }
 
+function EvidenceCard({
+  label,
+  title,
+  detail,
+  tone,
+  onPress,
+}: EvidenceCardData & { onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.evidenceCard,
+        tone === "supportive" ? styles.evidenceCardSupportive : styles.evidenceCardChallenging,
+      ]}
+    >
+      <Text style={styles.evidenceLabel}>{label}</Text>
+      <Text style={styles.evidenceTitle}>{title}</Text>
+      <Text style={styles.evidenceDetail}>{detail}</Text>
+      <View style={styles.evidenceButton}>
+        <Text style={styles.evidenceButtonText}>View matching days</Text>
+      </View>
+    </Pressable>
+  );
+}
+
 function SignalCard({
   title,
   signal,
   coverage,
+  onPress,
 }: {
   title: string;
   signal: ContextSignal | null;
   coverage: ContextCoverage;
+  onPress?: (() => void) | null;
 }) {
   const meterValue = getSignalMeterValue(signal);
   const shiftLabel = getSignalShiftLabel(signal);
   const summary = getSignalSummary(signal, coverage);
 
   return (
-    <View style={styles.signalCard}>
+    <Pressable
+      disabled={!onPress}
+      onPress={onPress ?? undefined}
+      style={[styles.signalCard, onPress ? styles.signalCardPressable : null]}
+    >
       <View style={styles.signalTopRow}>
         <Text style={styles.signalTitle}>{title}</Text>
         <Text style={styles.signalShift}>{shiftLabel}</Text>
@@ -189,7 +250,13 @@ function SignalCard({
       </View>
 
       <Text style={styles.signalSummary}>{summary}</Text>
-    </View>
+
+      {onPress ? (
+        <View style={styles.signalLinkPill}>
+          <Text style={styles.signalLinkText}>View matching days</Text>
+        </View>
+      ) : null}
+    </Pressable>
   );
 }
 
@@ -453,6 +520,36 @@ function getActionStory(args: {
   return "Keep the next step small and testable.";
 }
 
+function getMonthStory(args: {
+  monthCount: number;
+  comparison: ReturnType<typeof getMonthComparison>;
+  mostCommonMood: { mood: Mood | null; count: number };
+}) {
+  const shift = formatScoreShift(args.comparison.delta);
+
+  if (args.monthCount < 6) {
+    return {
+      title: "This month is still early.",
+      body: `${args.monthCount} check-ins so far. A few more will make the monthly picture clearer.`,
+    };
+  }
+
+  if (shift && args.comparison.previousCount >= 6) {
+    return {
+      title: `This month feels ${shift} than last month.`,
+      body:
+        args.mostCommonMood.mood != null
+          ? `${capitalize(args.mostCommonMood.mood)} has been your most common mood this month.`
+          : "There is enough here now for a month-to-month comparison.",
+    };
+  }
+
+  return {
+    title: "Your monthly baseline is starting to settle.",
+    body: `${args.monthCount} check-ins this month is enough to start noticing broader patterns.`,
+  };
+}
+
 function buildPatternCards(args: {
   topTag?: { tag: string; count: number };
   challengingTag?: { tag: string; count: number };
@@ -517,6 +614,35 @@ function buildPatternCards(args: {
   return cards.slice(0, 4);
 }
 
+function buildEvidenceCards(args: {
+  supportiveTag?: TagAssociation;
+  challengingTag?: TagAssociation;
+}) {
+  const cards: EvidenceCardData[] = [];
+
+  if (args.supportiveTag) {
+    cards.push({
+      label: "Seems to help",
+      title: `#${args.supportiveTag.tag} often showed up on better days.`,
+      detail: `${args.supportiveTag.count} check-ins, about ${Math.abs(args.supportiveTag.deltaFromBaseline).toFixed(1)} points lighter than your usual baseline.`,
+      tag: args.supportiveTag.tag,
+      tone: "supportive",
+    });
+  }
+
+  if (args.challengingTag) {
+    cards.push({
+      label: "Seems harder",
+      title: `#${args.challengingTag.tag} often showed up on tougher days.`,
+      detail: `${args.challengingTag.count} check-ins, about ${Math.abs(args.challengingTag.deltaFromBaseline).toFixed(1)} points heavier than your usual baseline.`,
+      tag: args.challengingTag.tag,
+      tone: "challenging",
+    });
+  }
+
+  return cards;
+}
+
 function getSignalMeterValue(signal: ContextSignal | null) {
   if (signal?.delta == null) return 0.5;
   const normalized = (signal.delta + 2) / 4;
@@ -556,7 +682,21 @@ function getSignalSummary(signal: ContextSignal | null, coverage: ContextCoverag
     : "Energy is showing only a light difference so far.";
 }
 
+function getContextDrilldownTarget(signal: ContextSignal | null): {
+  key: MoodContextKey;
+  band: "low" | "high";
+} | null {
+  if (!signal?.key || signal.delta == null) return null;
+
+  if (signal.key === "stress") {
+    return { key: "stress", band: signal.delta < 0 ? "high" : "low" };
+  }
+
+  return { key: signal.key, band: signal.delta >= 0 ? "high" : "low" };
+}
+
 export default function InsightsScreen() {
+  const router = useRouter();
   const { width } = useWindowDimensions();
   const compactCards = width >= 360;
   const today = useMemo(() => new Date(), []);
@@ -587,6 +727,10 @@ export default function InsightsScreen() {
   const challengingTags = useMemo(() => getTopChallengingTags(entries), [entries]);
   const weekdayInsights = useMemo(() => getWeekdayInsights(entries), [entries]);
   const comparison = useMemo(() => getWeekComparison(entries, today), [entries, today]);
+  const monthComparison = useMemo(
+    () => getMonthComparison(entries, thisMonth),
+    [entries, thisMonth]
+  );
   const contextSignals = useMemo(() => getContextSignals(entries), [entries]);
   const comboHighlights = useMemo(() => getComboHighlights(entries), [entries]);
   const sleepCoverage = useMemo(() => getContextCoverage(entries, "sleep", today), [entries, today]);
@@ -609,6 +753,15 @@ export default function InsightsScreen() {
         mostCommonMood,
       }),
     [weekCount, currentStreak, comparison, mostCommonMood]
+  );
+  const monthStory = useMemo(
+    () =>
+      getMonthStory({
+        monthCount,
+        comparison: monthComparison,
+        mostCommonMood,
+      }),
+    [monthCount, monthComparison, mostCommonMood]
   );
 
   const actionHint = useMemo(
@@ -633,6 +786,17 @@ export default function InsightsScreen() {
       }),
     [topTags, challengingTags, supportiveTags, bestWeekday, strongestCombo, mostCommonMood]
   );
+  const evidenceCards = useMemo(
+    () =>
+      buildEvidenceCards({
+        supportiveTag: supportiveTags[0],
+        challengingTag: challengingTags[0],
+      }),
+    [supportiveTags, challengingTags]
+  );
+  const sleepTarget = useMemo(() => getContextDrilldownTarget(sleepSignal), [sleepSignal]);
+  const stressTarget = useMemo(() => getContextDrilldownTarget(stressSignal), [stressSignal]);
+  const energyTarget = useMemo(() => getContextDrilldownTarget(energySignal), [energySignal]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -696,6 +860,12 @@ export default function InsightsScreen() {
                 compact={compactCards}
               />
             </View>
+
+            <CompareCard
+              eyebrow="Month to month"
+              title={monthStory.title}
+              body={monthStory.body}
+            />
           </View>
 
           <View style={styles.section}>
@@ -703,6 +873,23 @@ export default function InsightsScreen() {
               title="Patterns"
               subtitle="A quick look at what keeps showing up."
             />
+
+            {evidenceCards.length > 0 ? (
+              <View style={styles.evidenceStack}>
+                {evidenceCards.map((card) => (
+                  <EvidenceCard
+                    key={`${card.label}-${card.tag}`}
+                    {...card}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/history",
+                        params: { tag: card.tag },
+                      })
+                    }
+                  />
+                ))}
+              </View>
+            ) : null}
 
             <View style={styles.grid}>
               {patternCards.map((card) => (
@@ -727,9 +914,57 @@ export default function InsightsScreen() {
             />
 
             <View style={styles.signalGrid}>
-              <SignalCard title="Sleep" signal={sleepSignal} coverage={sleepCoverage} />
-              <SignalCard title="Stress" signal={stressSignal} coverage={stressCoverage} />
-              <SignalCard title="Energy" signal={energySignal} coverage={energyCoverage} />
+              <SignalCard
+                title="Sleep"
+                signal={sleepSignal}
+                coverage={sleepCoverage}
+                onPress={
+                  sleepTarget
+                    ? () =>
+                        router.push({
+                          pathname: "/history",
+                          params: {
+                            contextKey: sleepTarget.key,
+                            contextBand: sleepTarget.band,
+                          },
+                        })
+                    : null
+                }
+              />
+              <SignalCard
+                title="Stress"
+                signal={stressSignal}
+                coverage={stressCoverage}
+                onPress={
+                  stressTarget
+                    ? () =>
+                        router.push({
+                          pathname: "/history",
+                          params: {
+                            contextKey: stressTarget.key,
+                            contextBand: stressTarget.band,
+                          },
+                        })
+                    : null
+                }
+              />
+              <SignalCard
+                title="Energy"
+                signal={energySignal}
+                coverage={energyCoverage}
+                onPress={
+                  energyTarget
+                    ? () =>
+                        router.push({
+                          pathname: "/history",
+                          params: {
+                            contextKey: energyTarget.key,
+                            contextBand: energyTarget.band,
+                          },
+                        })
+                    : null
+                }
+              />
             </View>
           </View>
 
@@ -870,6 +1105,33 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
   },
+  compareCard: {
+    width: "100%",
+    backgroundColor: "#FFF8EC",
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "#F3D8AF",
+    padding: spacing.md,
+    gap: 6,
+  },
+  compareEyebrow: {
+    ...typography.caption,
+    color: "#9A5A23",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    fontWeight: "700",
+  },
+  compareTitle: {
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: "800",
+    color: "#7C2D12",
+  },
+  compareBody: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#8E5D2C",
+  },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -940,6 +1202,53 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: "#5F6B7A",
   },
+  evidenceStack: {
+    gap: spacing.sm,
+  },
+  evidenceCard: {
+    borderRadius: 22,
+    borderWidth: 1,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  evidenceCardSupportive: {
+    backgroundColor: "#F3FBF3",
+    borderColor: "#CDE9C8",
+  },
+  evidenceCardChallenging: {
+    backgroundColor: "#FFF7ED",
+    borderColor: "#F6D8AD",
+  },
+  evidenceLabel: {
+    ...typography.caption,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    fontWeight: "700",
+    color: "#5F6B7A",
+  },
+  evidenceTitle: {
+    fontSize: 20,
+    lineHeight: 26,
+    fontWeight: "800",
+    color: colors.text,
+  },
+  evidenceDetail: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#5F6B7A",
+  },
+  evidenceButton: {
+    alignSelf: "flex-start",
+    borderRadius: 999,
+    backgroundColor: "#162033",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  evidenceButtonText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "700",
+  },
   signalGrid: {
     gap: spacing.sm,
   },
@@ -950,6 +1259,9 @@ const styles = StyleSheet.create({
     borderColor: "#E4E8F2",
     padding: spacing.md,
     gap: spacing.sm,
+  },
+  signalCardPressable: {
+    borderColor: "#D6E4FF",
   },
   signalTopRow: {
     flexDirection: "row",
@@ -998,6 +1310,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: "#5F6B7A",
+  },
+  signalLinkPill: {
+    alignSelf: "flex-start",
+    borderRadius: 999,
+    backgroundColor: "#EEF4FF",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  signalLinkText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#1D4ED8",
   },
   signalMetaRow: {
     flexDirection: "row",
