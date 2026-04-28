@@ -53,7 +53,6 @@ export default function HomeScreen() {
     getByDate,
     setMoodForDate,
     setTagsForDate,
-    setNoteForDate,
     setContextForDate,
     refresh,
   } = useMoodEntries();
@@ -258,7 +257,6 @@ export default function HomeScreen() {
             entry={selectedEntry}
             onChangeMood={(mood) => void setMoodForDate(selectedDate, mood)}
             onChangeTags={(tags) => void setTagsForDate(selectedDate, tags)}
-            onChangeNote={(note) => void setNoteForDate(selectedDate, note)}
             onChangeContext={(key, value) =>
               void setContextForDate(selectedDate, key, value)
             }

@@ -1,4 +1,3 @@
-// components/mood/DayCalendar.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -7,6 +6,7 @@ import {
   ScrollView,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 
@@ -30,7 +30,6 @@ type Props = {
   entry: MoodEntry | null;
   onChangeMood: (mood: Mood) => void;
   onChangeTags: (tags: string[]) => void;
-  onChangeNote: (note: string) => void;
   onChangeContext: (key: MoodContextKey, value: ContextScale | null) => void;
   entriesMap: Record<string, MoodEntry>;
   availableTags: string[];
@@ -72,16 +71,16 @@ const CONTEXT_FIELDS: ContextField[] = [
 const SCALE_VALUES: ContextScale[] = [1, 2, 3, 4, 5];
 
 function uniqClean(tags: string[]) {
-  return Array.from(new Set(tags.map((t) => t.trim()).filter(Boolean)));
+  return Array.from(new Set(tags.map((tag) => tag.trim()).filter(Boolean)));
 }
 
-function startOfDay(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+function startOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
 function parseISODate(iso: string) {
-  const [y, m, d] = iso.split("-").map(Number);
-  return new Date(y, (m ?? 1) - 1, d ?? 1);
+  const [year, month, day] = iso.split("-").map(Number);
+  return new Date(year, (month ?? 1) - 1, day ?? 1);
 }
 
 function diffDaysFromToday(iso: string) {
@@ -91,8 +90,8 @@ function diffDaysFromToday(iso: string) {
 }
 
 function formatFriendlyDate(iso: string) {
-  const dt = parseISODate(iso);
-  return dt.toLocaleDateString(undefined, {
+  const date = parseISODate(iso);
+  return date.toLocaleDateString(undefined, {
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -156,26 +155,44 @@ function getSubtitle(iso: string, hasEntry: boolean) {
   const diff = diffDaysFromToday(iso);
 
   if (hasEntry) {
-    if (diff === 0) return isLateNightNow() ? "Nice work checking in before bed." : "Mood saved for today.";
-    if (diff === -1) return "A small look back at yesterday.";
-    if (diff === 1) return "A little planning ahead can help.";
+    if (diff === 0) {
+      return isLateNightNow() ? "Nice check-in before bed." : "Saved for today.";
+    }
+    if (diff === -1) return "A quick look back at yesterday.";
+    if (diff === 1) return "You can plan tomorrow a little here.";
     return `Your check-in for ${formatFriendlyDate(iso)}.`;
   }
 
-  if (diff === 0) return isLateNightNow() ? "How did today actually feel?" : "How are you feeling today?";
+  if (diff === 0) {
+    return isLateNightNow() ? "How did today actually feel?" : "How are you feeling today?";
+  }
   if (diff === -1) return "What was yesterday like?";
   if (diff === 1) return "What do you want tomorrow to feel like?";
   return getDailyPrompt(iso);
+}
+
+function getInitialContextIndex(entry: MoodEntry | null) {
+  if (!entry) return 0;
+
+  const firstMissingIndex = CONTEXT_FIELDS.findIndex((field) => entry[field.key] == null);
+  return firstMissingIndex === -1 ? CONTEXT_FIELDS.length - 1 : firstMissingIndex;
+}
+
+function getCompletedContextCount(entry: MoodEntry | null) {
+  if (!entry) return 0;
+  return CONTEXT_FIELDS.filter((field) => entry[field.key] != null).length;
 }
 
 function ContextScaleRow({
   field,
   value,
   onChange,
+  onSkip,
 }: {
   field: ContextField;
   value?: ContextScale;
   onChange: (value: ContextScale | null) => void;
+  onSkip: () => void;
 }) {
   return (
     <View style={styles.contextCard}>
@@ -185,8 +202,8 @@ function ContextScaleRow({
           <Text style={styles.contextValue}>{value ? `${value}/5` : "Skip"}</Text>
         </View>
 
-        <Pressable onPress={() => onChange(null)} hitSlop={8}>
-          <Text style={styles.contextClear}>{value ? "Clear" : "Optional"}</Text>
+        <Pressable onPress={value ? () => onChange(null) : onSkip} hitSlop={8}>
+          <Text style={styles.contextClear}>{value ? "Clear" : "Skip"}</Text>
         </Pressable>
       </View>
 
@@ -198,7 +215,7 @@ function ContextScaleRow({
           return (
             <Pressable
               key={step}
-              onPress={() => onChange(value === step ? null : step)}
+              onPress={() => onChange(step)}
               style={[
                 styles.contextScaleStep,
                 active ? { backgroundColor: field.accent, borderColor: field.accent } : null,
@@ -231,7 +248,6 @@ export function DayCalendar({
   entry,
   onChangeMood,
   onChangeTags,
-  onChangeNote,
   onChangeContext,
   entriesMap,
   availableTags,
@@ -240,36 +256,41 @@ export function DayCalendar({
   const [isEditing, setIsEditing] = useState(!entry);
   const [showConfetti, setShowConfetti] = useState(false);
   const [customTagDraft, setCustomTagDraft] = useState("");
+  const [activeContextIndex, setActiveContextIndex] = useState(() =>
+    getInitialContextIndex(entry)
+  );
+  const [showContextCelebration, setShowContextCelebration] = useState(false);
+  const [showContextSummary, setShowContextSummary] = useState(
+    getCompletedContextCount(entry) === CONTEXT_FIELDS.length
+  );
   const { width, height } = Dimensions.get("window");
+  const { height: windowHeight } = useWindowDimensions();
+  const compactLayout = windowHeight < 820;
 
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
   const cardOpacity = useRef(new Animated.Value(1)).current;
+  const contextCelebrationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previousContextCompleteRef = useRef(
+    getCompletedContextCount(entry) === CONTEXT_FIELDS.length
+  );
 
   const sfxPlayer = useAudioPlayer(require("@/assets/sounds/mood-select.mp3"));
 
-  const [noteDraft, setNoteDraft] = useState(entry?.note ?? "");
-  const entryNote = entry?.note ?? "";
-
-  useEffect(() => {
-    setNoteDraft(entryNote);
-  }, [entry?.updatedAt, entryNote]);
-
-  useEffect(() => {
-    if (!entry) return;
-
-    const id = setTimeout(() => {
-      if (entryNote === noteDraft) return;
-      onChangeNote(noteDraft);
-    }, 450);
-
-    return () => clearTimeout(id);
-  }, [noteDraft, entry, entry?.updatedAt, entryNote, onChangeNote]);
-
   useEffect(() => {
     setIsEditing(!entry);
+    setActiveContextIndex(getInitialContextIndex(entry));
+    setShowContextSummary(getCompletedContextCount(entry) === CONTEXT_FIELDS.length);
     cardOpacity.setValue(1);
   }, [selectedDate, entry?.updatedAt, entry, cardOpacity]);
+
+  useEffect(() => {
+    return () => {
+      if (contextCelebrationTimeoutRef.current) {
+        clearTimeout(contextCelebrationTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const animateEmoji = () => {
     scaleAnim.setValue(0.85);
@@ -322,13 +343,6 @@ export function DayCalendar({
     }
   };
 
-  const handleContextChange = (key: MoodContextKey, value: ContextScale | null) => {
-    if (!entry) return;
-
-    onChangeContext(key, value);
-    void Haptics.selectionAsync();
-  };
-
   const emoji = entry ? moodToEmoji[entry.mood] : moodToEmoji.neutral;
   const streak = getMoodStreak(entriesMap, selectedDate);
   const same = getSameMoodStreak(entriesMap, selectedDate);
@@ -343,6 +357,47 @@ export function DayCalendar({
     () => uniqClean([...DEFAULT_TAGS, ...availableTags]),
     [availableTags]
   );
+
+  const contextProgress = useMemo(
+    () =>
+      CONTEXT_FIELDS.map((field) => ({
+        ...field,
+        value: entry?.[field.key],
+      })),
+    [entry]
+  );
+
+  const activeContextField = CONTEXT_FIELDS[activeContextIndex];
+  const activeContextValue = activeContextField ? entry?.[activeContextField.key] : undefined;
+  const completedContextCount = getCompletedContextCount(entry);
+  const allContextComplete = completedContextCount === CONTEXT_FIELDS.length;
+
+  useEffect(() => {
+    if (allContextComplete && !previousContextCompleteRef.current) {
+      setShowContextCelebration(true);
+      setShowContextSummary(true);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      if (contextCelebrationTimeoutRef.current) {
+        clearTimeout(contextCelebrationTimeoutRef.current);
+      }
+
+      contextCelebrationTimeoutRef.current = setTimeout(() => {
+        setShowContextCelebration(false);
+      }, 2200);
+    }
+
+    if (!allContextComplete) {
+      setShowContextCelebration(false);
+      setShowContextSummary(false);
+      if (contextCelebrationTimeoutRef.current) {
+        clearTimeout(contextCelebrationTimeoutRef.current);
+        contextCelebrationTimeoutRef.current = null;
+      }
+    }
+
+    previousContextCompleteRef.current = allContextComplete;
+  }, [allContextComplete]);
 
   const toggleTag = async (tag: string) => {
     if (!entry) return;
@@ -371,6 +426,38 @@ export function DayCalendar({
       setCustomTagDraft("");
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {}
+  };
+
+  const handleContextChange = (key: MoodContextKey, value: ContextScale | null) => {
+    if (!entry) return;
+
+    setShowContextSummary(false);
+    onChangeContext(key, value);
+    void Haptics.selectionAsync();
+
+    if (value != null) {
+      const nextIndex = CONTEXT_FIELDS.findIndex((field) => field.key === key) + 1;
+      if (nextIndex < CONTEXT_FIELDS.length) {
+        setActiveContextIndex(nextIndex);
+      }
+    }
+  };
+
+  const handleSkipContext = () => {
+    if (!activeContextField) return;
+    setShowContextSummary(false);
+    if (activeContextIndex < CONTEXT_FIELDS.length - 1) {
+      setActiveContextIndex(activeContextIndex + 1);
+    }
+    void Haptics.selectionAsync();
+  };
+
+  const handleEditCompletedContext = () => {
+    const firstFilledIndex = contextProgress.findIndex((field) => field.value != null);
+    setShowContextCelebration(false);
+    setShowContextSummary(false);
+    setActiveContextIndex(firstFilledIndex === -1 ? 0 : firstFilledIndex);
+    void Haptics.selectionAsync();
   };
 
   const headerInfo = useMemo(() => getHeaderInfo(selectedDate), [selectedDate]);
@@ -427,7 +514,11 @@ export function DayCalendar({
           ]}
         >
           <Animated.Text
-            style={[styles.bigEmoji, { transform: [{ scale: scaleAnim }] }]}
+            style={[
+              styles.bigEmoji,
+              compactLayout ? styles.bigEmojiCompact : null,
+              { transform: [{ scale: scaleAnim }] },
+            ]}
           >
             {emoji}
           </Animated.Text>
@@ -442,30 +533,16 @@ export function DayCalendar({
         ) : null}
 
         {entry ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>CONTEXT</Text>
-            <Text style={styles.sectionHint}>
-              Optional signals that make your insights more useful over time.
-            </Text>
+          <View style={[styles.section, compactLayout ? styles.sectionCompact : null]}>
+            <Text style={styles.sectionTitle}>Tags</Text>
 
-            <View style={styles.contextWrap}>
-              {CONTEXT_FIELDS.map((field) => (
-                <ContextScaleRow
-                  key={field.key}
-                  field={field}
-                  value={entry[field.key]}
-                  onChange={(value) => handleContextChange(field.key, value)}
-                />
-              ))}
-            </View>
-          </View>
-        ) : null}
-
-        {entry ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>TAGS</Text>
-
-            <View style={styles.tagsWrap}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.tagsScrollContent}
+              style={styles.tagsScroll}
+              keyboardShouldPersistTaps="handled"
+            >
               {allTags.map((tag) => (
                 <TagChip
                   key={tag}
@@ -474,7 +551,7 @@ export function DayCalendar({
                   onPress={() => void toggleTag(tag)}
                 />
               ))}
-            </View>
+            </ScrollView>
 
             <View style={styles.customTagComposer}>
               <TextInput
@@ -499,20 +576,77 @@ export function DayCalendar({
           </View>
         ) : null}
 
-        {entry ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>NOTE</Text>
+        {entry && activeContextField ? (
+          <View style={[styles.section, compactLayout ? styles.sectionCompact : null]}>
+            <Text style={styles.sectionTitle}>Quick extras</Text>
+            <Text style={styles.sectionHint}>
+              {allContextComplete
+                ? "Done. Your quick extras are saved."
+                : `Add ${completedContextCount}/3 if you want a fuller check-in.`}
+            </Text>
 
-            <View style={styles.noteWrap}>
-              <TextInput
-                value={noteDraft}
-                onChangeText={setNoteDraft}
-                placeholder="Write a quick note..."
-                placeholderTextColor="rgba(17,24,39,0.35)"
-                multiline
-                style={styles.noteInput}
-              />
-              <Text style={styles.autosaveText}>Auto-saved</Text>
+            <View style={styles.contextWrap}>
+              <View style={styles.contextProgressRow}>
+                {contextProgress.map((field, index) => {
+                  const completed = field.value != null;
+                  const active = index === activeContextIndex && !allContextComplete;
+
+                  return (
+                    <Pressable
+                      key={field.key}
+                      onPress={() => setActiveContextIndex(index)}
+                      style={[
+                        styles.contextStepChip,
+                        completed ? styles.contextStepChipDone : null,
+                        active ? styles.contextStepChipActive : null,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.contextStepLabel,
+                          active ? styles.contextStepLabelActive : null,
+                        ]}
+                      >
+                        {field.title}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.contextStepValue,
+                          active ? styles.contextStepValueActive : null,
+                        ]}
+                      >
+                        {field.value ? `${field.value}/5` : "Skip"}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              {allContextComplete && showContextSummary ? (
+                <View
+                  style={[
+                    styles.contextCompletionCard,
+                    showContextCelebration ? styles.contextCompletionCardCelebrate : null,
+                  ]}
+                >
+                  <Text style={styles.contextCompletionBadge}>All 3 done</Text>
+                  <Text style={styles.contextCompletionTitle}>Nice, that check-in is complete.</Text>
+
+                  <Pressable
+                    onPress={handleEditCompletedContext}
+                    style={styles.contextCompletionButton}
+                  >
+                    <Text style={styles.contextCompletionButtonText}>Edit extras</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <ContextScaleRow
+                  field={activeContextField}
+                  value={activeContextValue}
+                  onChange={(value) => handleContextChange(activeContextField.key, value)}
+                  onSkip={handleSkipContext}
+                />
+              )}
             </View>
           </View>
         ) : null}
@@ -526,10 +660,7 @@ export function DayCalendar({
             </View>
           </Animated.View>
         ) : (
-          <Pressable
-            onPress={() => setIsEditing(true)}
-            style={[styles.changeBtn, { marginTop: 14 }]}
-          >
+          <Pressable onPress={() => setIsEditing(true)} style={[styles.changeBtn, { marginTop: 14 }]}>
             <Text style={styles.changeBtnText}>Change mood</Text>
           </Pressable>
         )}

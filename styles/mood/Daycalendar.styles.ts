@@ -28,9 +28,15 @@ export const dayCalendarStyles = StyleSheet.create({
     fontSize: 72,
   },
 
+  bigEmojiCompact: {
+    fontSize: 60,
+  },
+
   subtitle: {
     fontSize: 14,
     color: colors.mutedText,
+    textAlign: "center",
+    paddingHorizontal: spacing.md,
   },
 
   pickerWrap: {
@@ -43,7 +49,7 @@ export const dayCalendarStyles = StyleSheet.create({
     width: "100%",
     padding: spacing.md,
     borderRadius: 18,
-    backgroundColor: colors.card ?? "#FFFFFF",
+    backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -64,8 +70,6 @@ export const dayCalendarStyles = StyleSheet.create({
     color: "#1F2937",
   },
 
-  /* 🔥 NEW BELOW */
-
   streakText: {
     fontSize: 13,
     fontWeight: "800",
@@ -83,6 +87,10 @@ export const dayCalendarStyles = StyleSheet.create({
     width: "100%",
   },
 
+  sectionCompact: {
+    marginTop: 10,
+  },
+
   sectionTitle: {
     fontSize: 12,
     fontWeight: "800",
@@ -91,25 +99,73 @@ export const dayCalendarStyles = StyleSheet.create({
   },
 
   sectionHint: {
-    marginTop: 6,
+    marginTop: 4,
     fontSize: 12,
     color: colors.mutedText,
     textAlign: "center",
+    paddingHorizontal: spacing.md,
   },
 
   contextWrap: {
-    marginTop: 10,
+    marginTop: 8,
     paddingHorizontal: spacing.md,
     gap: spacing.sm,
   },
 
-  contextCard: {
+  contextProgressRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+
+  contextStepChip: {
+    flex: 1,
     borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#D6E0FF",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    gap: 2,
+  },
+
+  contextStepChipDone: {
+    backgroundColor: "#F7FBF4",
+    borderColor: "#CFE8C8",
+  },
+
+  contextStepChipActive: {
+    backgroundColor: "#EEF4FF",
+    borderColor: "#AFC2FF",
+  },
+
+  contextStepLabel: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: colors.text,
+    textAlign: "center",
+  },
+
+  contextStepLabelActive: {
+    color: "#1D4ED8",
+  },
+
+  contextStepValue: {
+    fontSize: 11,
+    color: colors.mutedText,
+    textAlign: "center",
+  },
+
+  contextStepValueActive: {
+    color: "#4C6EA9",
+  },
+
+  contextCard: {
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: "#DBE3F4",
     backgroundColor: "#F8FAFF",
     padding: 12,
-    gap: 10,
+    gap: 8,
   },
 
   contextCardHeader: {
@@ -126,7 +182,7 @@ export const dayCalendarStyles = StyleSheet.create({
   },
 
   contextTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "800",
     color: colors.text,
   },
@@ -149,7 +205,7 @@ export const dayCalendarStyles = StyleSheet.create({
 
   contextScaleStep: {
     flex: 1,
-    minHeight: 38,
+    minHeight: 36,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "#D6E0FF",
@@ -183,16 +239,109 @@ export const dayCalendarStyles = StyleSheet.create({
     color: colors.mutedText,
   },
 
+  contextCompletionCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#CFE8C8",
+    backgroundColor: "#F7FBF4",
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    alignItems: "center",
+    gap: 6,
+  },
+
+  contextCompletionCardCelebrate: {
+    borderColor: "#9AD08B",
+    shadowColor: "#9AD08B",
+    shadowOpacity: 0.22,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 3,
+  },
+
+  contextCompletionBadge: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+    textTransform: "uppercase",
+    color: "#2F6F34",
+  },
+
+  contextCompletionTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#16351A",
+    textAlign: "center",
+  },
+
+  contextCompletionButton: {
+    marginTop: 2,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#B8D8B1",
+  },
+
+  contextCompletionButtonText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#234D27",
+  },
+
   tagsWrap: {
     marginTop: 10,
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "center",
     gap: 10,
+    paddingHorizontal: spacing.md,
+  },
+
+  tagsScroll: {
+    marginTop: 10,
+  },
+
+  tagsScrollContent: {
+    paddingHorizontal: spacing.md,
+    gap: 10,
+  },
+
+  tagChip: {
+    minHeight: 38,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  tagChipActive: {
+    backgroundColor: "#111827",
+    borderColor: "#111827",
+  },
+
+  tagChipInactive: {
+    backgroundColor: "#EEF2FF",
+    borderColor: "#CBD5E1",
+  },
+
+  tagTextActive: {
+    color: "#FFFFFF",
+    fontWeight: "800",
+    fontSize: 12,
+  },
+
+  tagTextInactive: {
+    color: "#111827",
+    fontWeight: "800",
+    fontSize: 12,
   },
 
   customTagComposer: {
-    marginTop: 12,
+    marginTop: 10,
     paddingHorizontal: spacing.md,
     flexDirection: "row",
     alignItems: "center",
@@ -223,62 +372,9 @@ export const dayCalendarStyles = StyleSheet.create({
     fontWeight: "800",
   },
 
-  tagChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-
-  tagChipActive: {
-    backgroundColor: "#111827",
-    borderColor: "#111827",
-  },
-
-  tagChipInactive: {
-    backgroundColor: "#EEF2FF",
-    borderColor: "#CBD5E1",
-  },
-
-  tagTextActive: {
-    color: "white",
-    fontWeight: "800",
-    fontSize: 12,
-  },
-
-  tagTextInactive: {
-    color: "#111827",
-    fontWeight: "800",
-    fontSize: 12,
-  },
-
-  noteWrap: {
-    marginTop: 10,
-    paddingHorizontal: spacing.md,
-  },
-
-  noteInput: {
-    minHeight: 50,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    backgroundColor: "#F8FAFF",
-    borderWidth: 1,
-    borderColor: "#CBD5E1",
-    fontSize: 14,
-  },
-
-  autosaveText: {
-    marginTop: 6,
-    fontSize: 11,
-    opacity: 0.5,
-    textAlign: "right",
-  },
-
   dateSubText: {
     fontSize: 12,
     opacity: 0.55,
     marginTop: -6,
   },
-
 });
