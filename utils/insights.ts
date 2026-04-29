@@ -32,8 +32,9 @@ export type HeroTone = "steady" | "lift" | "care";
 
 export type PatternCardData = {
   label: string;
-  value: string;
-  detail: string;
+  pattern: string;
+  meaning: string;
+  suggestion: string;
   tone: "neutral" | "cool" | "warm";
 };
 
@@ -197,6 +198,61 @@ function describeDominantMood(mood: Mood) {
   if (mood === "sad") return "heavier";
   if (mood === "anxious") return "more tense";
   return "more reactive";
+}
+
+function getMoodMeaning(mood: Mood) {
+  if (mood === "happy") {
+    return "That looks like a real positive baseline worth protecting, not just a lucky day here and there.";
+  }
+
+  if (mood === "neutral") {
+    return "That suggests your recent baseline may be steadier than it feels from the inside.";
+  }
+
+  if (mood === "sad") {
+    return "That suggests this stretch may need gentler expectations and more support, not just more pushing.";
+  }
+
+  if (mood === "anxious") {
+    return "That can mean your recent days are carrying a lot of tension, even when you keep functioning through them.";
+  }
+
+  return "That can be a sign that your recent days are feeling more reactive, which usually benefits from earlier support.";
+}
+
+function getMoodSuggestion(mood: Mood) {
+  if (mood === "happy" || mood === "neutral") {
+    return "Try keeping one helpful routine or tag consistent this week so the steadier days stay repeatable.";
+  }
+
+  return "Use the next few check-ins to spot one repeating tag, stress spike, or sleep dip around these harder moods.";
+}
+
+function getComboSuggestion(combo: ComboHighlight) {
+  const hasHighStress = combo.features.includes("high_stress");
+  const hasLowSleep = combo.features.includes("low_sleep");
+  const tagFeature = combo.features.find((feature) => feature.startsWith("tag:"));
+  const tag = tagFeature ? tagFeature.slice(4) : null;
+
+  if (combo.tone === "challenging" && hasHighStress && hasLowSleep) {
+    return "Treat high-stress, low-sleep days as early-warning days and simplify sooner.";
+  }
+
+  if (combo.tone === "challenging" && tag) {
+    return `Plan a lighter version of the day before #${tag} and ${formatComboLabel(
+      combo.features
+    ).toLowerCase()} stack up.`;
+  }
+
+  if (combo.tone === "challenging") {
+    return "When this combo starts forming, lower one demand early instead of waiting for the day to get heavy.";
+  }
+
+  if (tag) {
+    return `Try recreating #${tag} together with the same conditions once or twice this week.`;
+  }
+
+  return "Try recreating that combination deliberately once or twice this week.";
 }
 
 function describeContextLevel(key: MoodContextKey, band: "low" | "high") {
@@ -1087,52 +1143,68 @@ export function buildPatternCards(args: {
 
   if (args.supportiveTag) {
     cards.push({
-      label: "Best lift",
-      value: `#${args.supportiveTag.tag}`,
-      detail: `${args.supportiveTag.count} better days`,
+      label: "Support to repeat",
+      pattern: `Your lighter days often include #${args.supportiveTag.tag}.`,
+      meaning: `That makes #${args.supportiveTag.tag} look more like a repeatable support than a coincidence. It showed up on ${args.supportiveTag.count} better day${args.supportiveTag.count === 1 ? "" : "s"}.`,
+      suggestion: `Try keeping #${args.supportiveTag.tag} in your routine again this week, especially on an ordinary day.`,
       tone: "cool",
     });
   }
 
   if (args.challengingTag) {
     cards.push({
-      label: "Most friction",
-      value: `#${args.challengingTag.tag}`,
-      detail: `${args.challengingTag.count} harder days`,
+      label: "Pressure to plan for",
+      pattern: `Harder days often carry #${args.challengingTag.tag}.`,
+      meaning: `That tag may be a pressure cue worth planning around instead of judging afterward. It showed up on ${args.challengingTag.count} harder day${args.challengingTag.count === 1 ? "" : "s"}.`,
+      suggestion: `On the next #${args.challengingTag.tag} day, lower one demand earlier or add one small buffer.`,
       tone: "warm",
+    });
+  }
+
+  if (args.strongestCombo) {
+    const comboLabel = formatComboLabel(args.strongestCombo.features);
+    cards.push({
+      label:
+        args.strongestCombo.tone === "challenging" ? "Combo to watch" : "Combo to repeat",
+      pattern:
+        args.strongestCombo.tone === "challenging"
+          ? `${comboLabel} is your clearest heavier-mood combo.`
+          : `${comboLabel} lines up with your steadier days.`,
+      meaning:
+        args.strongestCombo.tone === "challenging"
+          ? `This combination showed up ${args.strongestCombo.count} times and seems to matter more than either factor on its own.`
+          : `This combination showed up ${args.strongestCombo.count} times and looks more helpful than either signal on its own.`,
+      suggestion: getComboSuggestion(args.strongestCombo),
+      tone: args.strongestCombo.tone === "challenging" ? "warm" : "cool",
     });
   }
 
   if (args.bestWeekday) {
     cards.push({
-      label: "Steadiest day",
-      value: `${args.bestWeekday.label}s`,
-      detail: `${args.bestWeekday.count} check-ins`,
+      label: "Rhythm to borrow",
+      pattern: `Your recent ${args.bestWeekday.label}s feel steadier than your other days.`,
+      meaning:
+        "That usually points to a better-fit pace, workload, or routine on that day, even if the reason is not obvious yet.",
+      suggestion: `Copy one part of your ${args.bestWeekday.label} setup onto a day that usually feels harder.`,
       tone: "neutral",
-    });
-  }
-
-  if (args.strongestCombo) {
-    const [first, second] = args.strongestCombo.features.map(formatContextFeatureLabel);
-    cards.push({
-      label: "Strong combo",
-      value: `${capitalize(first)} + ${second}`,
-      detail: `${args.strongestCombo.count} repeated times`,
-      tone: args.strongestCombo.tone === "challenging" ? "warm" : "cool",
     });
   } else if (args.topTag) {
     cards.push({
-      label: "Most used tag",
-      value: `#${args.topTag.tag}`,
-      detail: `${args.topTag.count} times`,
+      label: "Context clue",
+      pattern: `#${args.topTag.tag} keeps showing up in your check-ins.`,
+      meaning:
+        "That makes it a useful clue about the context around your moods, even before it clearly looks helpful or hard.",
+      suggestion: `Keep tagging #${args.topTag.tag} and notice whether it clusters more on lighter or heavier days.`,
       tone: "neutral",
     });
   } else if (args.mostCommonMood.mood) {
+    const mood = args.mostCommonMood.mood;
     cards.push({
-      label: "Most common mood",
-      value: `${moodToEmoji[args.mostCommonMood.mood]} ${capitalize(args.mostCommonMood.mood)}`,
-      detail: `${args.mostCommonMood.count} check-ins so far`,
-      tone: "neutral",
+      label: "Current baseline",
+      pattern: `You've been feeling mostly ${mood} lately ${moodToEmoji[mood]}`,
+      meaning: getMoodMeaning(mood),
+      suggestion: getMoodSuggestion(mood),
+      tone: mood === "happy" ? "cool" : mood === "sad" || mood === "anxious" || mood === "angry" ? "warm" : "neutral",
     });
   }
 

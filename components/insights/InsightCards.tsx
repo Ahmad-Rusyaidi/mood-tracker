@@ -407,8 +407,9 @@ export function StatPill({
 
 export function PatternCard({
   label,
-  value,
-  detail,
+  pattern,
+  meaning,
+  suggestion,
   tone,
   twoUp,
 }: PatternCardData & { twoUp: boolean }) {
@@ -422,8 +423,12 @@ export function PatternCard({
       ]}
     >
       <Text style={styles.patternLabel}>{label}</Text>
-      <Text style={styles.patternValue}>{value}</Text>
-      <Text style={styles.patternDetail}>{detail}</Text>
+      <Text style={styles.patternValue}>{pattern}</Text>
+      <Text style={styles.patternDetail}>{meaning}</Text>
+      <View style={styles.patternSuggestionCard}>
+        <Text style={styles.patternSuggestionLabel}>Try this</Text>
+        <Text style={styles.patternSuggestionText}>{suggestion}</Text>
+      </View>
     </View>
   );
 }

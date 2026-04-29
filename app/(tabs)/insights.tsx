@@ -212,7 +212,7 @@ export default function InsightsScreen() {
           <View style={styles.section}>
             <SectionHeader
               title="What stands out"
-              subtitle="The clearest repeat patterns from your tags, context, and routines."
+              subtitle="The clearest repeat patterns, what they likely mean, and what to try next."
             />
 
             <View style={styles.grid}>
@@ -245,11 +245,8 @@ export default function InsightsScreen() {
             <View style={styles.grid}>
               {insights.highlights.patternCards.map((card) => (
                 <PatternCard
-                  key={`${card.label}-${card.value}`}
-                  label={card.label}
-                  value={card.value}
-                  detail={card.detail}
-                  tone={card.tone}
+                  key={`${card.label}-${card.pattern}`}
+                  {...card}
                   twoUp={insights.layout.twoUpPatterns}
                 />
               ))}

@@ -27,6 +27,7 @@ const {
   buildAnalysisLenses,
   buildAnalysisProfile,
   buildNarrativeSummary,
+  buildPatternCards,
   buildRecoveryLens,
   buildSignalQualityLens,
   buildTrajectoryLens,
@@ -669,6 +670,38 @@ run("buildAnalysisExperiments prioritizes the clearest main focus first", () => 
 
   assert.equal(experiments[0]?.label, "Main focus");
   assert.match(experiments[0]?.title ?? "", /#work/i);
+});
+
+run("buildPatternCards turns a supportive tag into a decision-style insight", () => {
+  const cards = buildPatternCards({
+    supportiveTag: { tag: "exercise", count: 4 },
+    challengingTag: undefined,
+    topTag: undefined,
+    bestWeekday: undefined,
+    strongestCombo: null,
+    mostCommonMood: { mood: "happy", count: 5 },
+  });
+
+  assert.equal(cards[0]?.label, "Support to repeat");
+  assert.match(cards[0]?.pattern ?? "", /#exercise/i);
+  assert.match(cards[0]?.meaning ?? "", /repeatable support/i);
+  assert.match(cards[0]?.suggestion ?? "", /again this week/i);
+});
+
+run("buildPatternCards gives the fallback mood insight a so-what and next step", () => {
+  const cards = buildPatternCards({
+    supportiveTag: undefined,
+    challengingTag: undefined,
+    topTag: undefined,
+    bestWeekday: undefined,
+    strongestCombo: null,
+    mostCommonMood: { mood: "happy", count: 3 },
+  });
+
+  assert.equal(cards[0]?.label, "Current baseline");
+  assert.match(cards[0]?.pattern ?? "", /mostly happy/i);
+  assert.match(cards[0]?.meaning ?? "", /baseline worth protecting/i);
+  assert.match(cards[0]?.suggestion ?? "", /helpful routine/i);
 });
 
 run("buildNarrativeSummary creates a plain-English story from the strongest signals", () => {
