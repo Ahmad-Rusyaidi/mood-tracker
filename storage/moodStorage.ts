@@ -6,6 +6,8 @@ import { StorageKeys } from "./keys";
 
 type MoodEntriesMap = Record<string, MoodEntry>; // key = YYYY-MM-DD
 
+let mutationQueue: Promise<void> = Promise.resolve();
+
 function now() {
   return Date.now();
 }
@@ -27,6 +29,15 @@ async function readMap(): Promise<MoodEntriesMap> {
 
 async function writeMap(map: MoodEntriesMap): Promise<void> {
   await AsyncStorage.setItem(StorageKeys.moodEntries, toJson(map));
+}
+
+function enqueueMutation<T>(operation: () => Promise<T>): Promise<T> {
+  const result = mutationQueue.then(operation, operation);
+  mutationQueue = result.then(
+    () => undefined,
+    () => undefined
+  );
+  return result;
 }
 
 function getBaseEntry(date: string, existing?: MoodEntry): MoodEntry {
@@ -98,23 +109,27 @@ export const moodStorage = {
   },
 
   async setMoodForDate(date: string, mood: Mood): Promise<MoodEntry> {
-    const map = await readMap();
-    const existing = map[date];
+    return enqueueMutation(async () => {
+      const map = await readMap();
+      const existing = map[date];
 
-    const entry: MoodEntry = existing
-      ? { ...existing, mood, updatedAt: now() }
-      : { date, mood, createdAt: now(), updatedAt: now() };
+      const entry: MoodEntry = existing
+        ? { ...existing, mood, updatedAt: now() }
+        : { date, mood, createdAt: now(), updatedAt: now() };
 
-    map[date] = entry;
-    await writeMap(map);
-    return entry;
+      map[date] = entry;
+      await writeMap(map);
+      return entry;
+    });
   },
 
   async removeByDate(date: string): Promise<void> {
-    const map = await readMap();
-    if (!map[date]) return;
-    delete map[date];
-    await writeMap(map);
+    return enqueueMutation(async () => {
+      const map = await readMap();
+      if (!map[date]) return;
+      delete map[date];
+      await writeMap(map);
+    });
   },
 
   async clearAll(): Promise<void> {
@@ -122,35 +137,37 @@ export const moodStorage = {
   },
 
   async replaceAll(entries: MoodEntry[]): Promise<MoodEntry[]> {
-    const map: MoodEntriesMap = {};
+    return enqueueMutation(async () => {
+      const map: MoodEntriesMap = {};
 
-    for (const rawEntry of entries) {
-      const entry = sanitizeEntry(rawEntry);
-      if (!entry) continue;
-      map[entry.date] = entry;
-    }
+      for (const rawEntry of entries) {
+        const entry = sanitizeEntry(rawEntry);
+        if (!entry) continue;
+        map[entry.date] = entry;
+      }
 
-    await writeMap(map);
-    return Object.values(map).sort((a, b) => (a.date < b.date ? 1 : -1));
+      await writeMap(map);
+      return Object.values(map).sort((a, b) => (a.date < b.date ? 1 : -1));
+    });
   },
 
   async setTagsForDate(date: string, tags: string[]): Promise<MoodEntry> {
-    const map = await readMap();
-    const existing = map[date];
+    return enqueueMutation(async () => {
+      const map = await readMap();
+      const existing = map[date];
 
-    const cleaned = Array.from(
-      new Set(tags.map((t) => t.trim()).filter(Boolean))
-    );
+      const cleaned = Array.from(new Set(tags.map((t) => t.trim()).filter(Boolean)));
 
-    const entry: MoodEntry = {
-      ...getBaseEntry(date, existing),
-      tags: cleaned,
-      updatedAt: now(),
-    };
+      const entry: MoodEntry = {
+        ...getBaseEntry(date, existing),
+        tags: cleaned,
+        updatedAt: now(),
+      };
 
-    map[date] = entry;
-    await writeMap(map);
-    return entry;
+      map[date] = entry;
+      await writeMap(map);
+      return entry;
+    });
   },
 
   async setContextForDate(
@@ -158,23 +175,25 @@ export const moodStorage = {
     key: MoodContextKey,
     value: ContextScale | null
   ): Promise<MoodEntry> {
-    const map = await readMap();
-    const existing = map[date];
-    const cleanedValue = cleanContextValue(value);
-    const baseEntry = getBaseEntry(date, existing);
-    const entry: MoodEntry = {
-      ...baseEntry,
-      updatedAt: now(),
-    };
+    return enqueueMutation(async () => {
+      const map = await readMap();
+      const existing = map[date];
+      const cleanedValue = cleanContextValue(value);
+      const baseEntry = getBaseEntry(date, existing);
+      const entry: MoodEntry = {
+        ...baseEntry,
+        updatedAt: now(),
+      };
 
-    if (cleanedValue === undefined) {
-      delete entry[key];
-    } else {
-      entry[key] = cleanedValue;
-    }
+      if (cleanedValue === undefined) {
+        delete entry[key];
+      } else {
+        entry[key] = cleanedValue;
+      }
 
-    map[date] = entry;
-    await writeMap(map);
-    return entry;
+      map[date] = entry;
+      await writeMap(map);
+      return entry;
+    });
   },
 };

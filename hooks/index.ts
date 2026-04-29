@@ -4,4 +4,5 @@ export * from "./useInsightsScreen";
 export * from "./useSettingsScreen";
 export * from "./useHistoryScreen";
 export * from "./useHomeScreen";
+export * from "./useCurrentDate";
 

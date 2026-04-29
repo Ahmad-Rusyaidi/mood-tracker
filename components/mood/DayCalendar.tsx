@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  Alert,
   Dimensions,
   Pressable,
   ScrollView,
@@ -17,7 +18,9 @@ import ConfettiCannon from "react-native-confetti-cannon";
 import { MoodPicker } from "@/components/mood";
 import { TagChip } from "@/components/mood/TagChip";
 import { DEFAULT_TAGS } from "@/constants/tags";
+import { useCurrentDate } from "@/hooks/useCurrentDate";
 import type { ContextScale, Mood, MoodContextKey, MoodEntry } from "@/types";
+import { isFutureISODate } from "@/utils";
 import { getDailyPrompt } from "@/utils/moodPrompts";
 import { moodSparkleColors } from "@/utils/moodSparkle";
 import { getMoodStreak, getSameMoodStreak } from "@/utils/moodStats";
@@ -28,9 +31,12 @@ import { dayCalendarStyles as styles } from "../../styles/mood/Daycalendar.style
 type Props = {
   selectedDate: string;
   entry: MoodEntry | null;
-  onChangeMood: (mood: Mood) => void;
-  onChangeTags: (tags: string[]) => void;
-  onChangeContext: (key: MoodContextKey, value: ContextScale | null) => void;
+  onChangeMood: (mood: Mood) => Promise<unknown>;
+  onChangeTags: (tags: string[]) => Promise<unknown>;
+  onChangeContext: (
+    key: MoodContextKey,
+    value: ContextScale | null
+  ) => Promise<unknown>;
   entriesMap: Record<string, MoodEntry>;
   availableTags: string[];
   onCreateCustomTag: (tag: string) => Promise<unknown>;
@@ -159,7 +165,9 @@ function getSubtitle(iso: string, hasEntry: boolean) {
       return isLateNightNow() ? "Nice check-in before bed." : "Saved for today.";
     }
     if (diff === -1) return "A quick look back at yesterday.";
-    if (diff === 1) return "You can plan tomorrow a little here.";
+    if (diff > 0) {
+      return "Future dates stay in preview mode so your streaks and insights stay accurate.";
+    }
     return `Your check-in for ${formatFriendlyDate(iso)}.`;
   }
 
@@ -167,7 +175,7 @@ function getSubtitle(iso: string, hasEntry: boolean) {
     return isLateNightNow() ? "How did today actually feel?" : "How are you feeling today?";
   }
   if (diff === -1) return "What was yesterday like?";
-  if (diff === 1) return "What do you want tomorrow to feel like?";
+  if (diff > 0) return "Preview the day here, then come back on that date to log it for real.";
   return getDailyPrompt(iso);
 }
 
@@ -253,6 +261,7 @@ export function DayCalendar({
   availableTags,
   onCreateCustomTag,
 }: Props) {
+  const today = useCurrentDate();
   const [isEditing, setIsEditing] = useState(!entry);
   const [showConfetti, setShowConfetti] = useState(false);
   const [customTagDraft, setCustomTagDraft] = useState("");
@@ -328,18 +337,28 @@ export function DayCalendar({
   };
 
   const handlePick = async (mood: Mood) => {
+    if (isFutureDate) return;
     const isFirstEver = !entry;
 
-    onChangeMood(mood);
-    setIsEditing(false);
+    try {
+      await onChangeMood(mood);
+      setIsEditing(false);
 
-    animateEmoji();
-    fadeCardOut();
-    void playFeedback();
+      animateEmoji();
+      fadeCardOut();
+      void playFeedback();
 
-    if (isFirstEver) {
-      setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 1500);
+      if (isFirstEver) {
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 1500);
+      }
+    } catch (error) {
+      Alert.alert(
+        "Could not save mood",
+        error instanceof Error
+          ? error.message
+          : "Your check-in did not save. Please try again."
+      );
     }
   };
 
@@ -357,6 +376,7 @@ export function DayCalendar({
     () => uniqClean([...DEFAULT_TAGS, ...availableTags]),
     [availableTags]
   );
+  const isFutureDate = useMemo(() => isFutureISODate(selectedDate, today), [selectedDate, today]);
 
   const contextProgress = useMemo(
     () =>
@@ -400,20 +420,27 @@ export function DayCalendar({
   }, [allContextComplete]);
 
   const toggleTag = async (tag: string) => {
-    if (!entry) return;
+    if (!entry || isFutureDate) return;
 
     const next = selectedTags.includes(tag)
       ? selectedTags.filter((current) => current !== tag)
       : [...selectedTags, tag];
 
     try {
-      onChangeTags(uniqClean(next));
+      await onChangeTags(uniqClean(next));
       void Haptics.selectionAsync();
-    } catch {}
+    } catch (error) {
+      Alert.alert(
+        "Could not update tags",
+        error instanceof Error
+          ? error.message
+          : "Your tag changes did not save. Please try again."
+      );
+    }
   };
 
   const handleAddCustomTag = async () => {
-    if (!entry) return;
+    if (!entry || isFutureDate) return;
 
     const nextTag = customTagDraft.trim().toLowerCase();
     if (!nextTag) return;
@@ -421,25 +448,41 @@ export function DayCalendar({
     try {
       await onCreateCustomTag(nextTag);
       if (!selectedTags.includes(nextTag)) {
-        onChangeTags(uniqClean([...selectedTags, nextTag]));
+        await onChangeTags(uniqClean([...selectedTags, nextTag]));
       }
       setCustomTagDraft("");
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch {}
+    } catch (error) {
+      Alert.alert(
+        "Could not add tag",
+        error instanceof Error
+          ? error.message
+          : "That custom tag did not save. Please try again."
+      );
+    }
   };
 
-  const handleContextChange = (key: MoodContextKey, value: ContextScale | null) => {
-    if (!entry) return;
+  const handleContextChange = async (key: MoodContextKey, value: ContextScale | null) => {
+    if (!entry || isFutureDate) return;
 
-    setShowContextSummary(false);
-    onChangeContext(key, value);
-    void Haptics.selectionAsync();
+    try {
+      setShowContextSummary(false);
+      await onChangeContext(key, value);
+      void Haptics.selectionAsync();
 
-    if (value != null) {
-      const nextIndex = CONTEXT_FIELDS.findIndex((field) => field.key === key) + 1;
-      if (nextIndex < CONTEXT_FIELDS.length) {
-        setActiveContextIndex(nextIndex);
+      if (value != null) {
+        const nextIndex = CONTEXT_FIELDS.findIndex((field) => field.key === key) + 1;
+        if (nextIndex < CONTEXT_FIELDS.length) {
+          setActiveContextIndex(nextIndex);
+        }
       }
+    } catch (error) {
+      Alert.alert(
+        "Could not save extras",
+        error instanceof Error
+          ? error.message
+          : "Those extra details did not save. Please try again."
+      );
     }
   };
 
@@ -532,7 +575,7 @@ export function DayCalendar({
           </Text>
         ) : null}
 
-        {entry ? (
+        {entry && !isFutureDate ? (
           <View style={[styles.section, compactLayout ? styles.sectionCompact : null]}>
             <Text style={styles.sectionTitle}>Tags</Text>
 
@@ -576,7 +619,7 @@ export function DayCalendar({
           </View>
         ) : null}
 
-        {entry && activeContextField ? (
+        {entry && activeContextField && !isFutureDate ? (
           <View style={[styles.section, compactLayout ? styles.sectionCompact : null]}>
             <Text style={styles.sectionTitle}>Quick extras</Text>
             <Text style={styles.sectionHint}>
@@ -651,7 +694,17 @@ export function DayCalendar({
           </View>
         ) : null}
 
-        {isEditing ? (
+        {isFutureDate ? (
+          <View style={styles.pickerWrap}>
+            <View style={styles.pickerCard}>
+              <Text style={styles.sectionTitle}>Preview only</Text>
+              <Text style={styles.sectionHint}>
+                Future dates do not save moods yet. Open this day when it arrives so your streaks,
+                summaries, and insights stay accurate.
+              </Text>
+            </View>
+          </View>
+        ) : isEditing ? (
           <Animated.View style={{ opacity: cardOpacity, marginTop: 14 }}>
             <View style={styles.pickerWrap}>
               <View style={styles.pickerCard}>

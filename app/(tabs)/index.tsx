@@ -53,10 +53,10 @@ export default function HomeScreen() {
           <DayCalendar
             selectedDate={screen.selectedDate}
             entry={screen.selectedEntry}
-            onChangeMood={(mood) => void screen.setMoodForDate(screen.selectedDate, mood)}
-            onChangeTags={(tags) => void screen.setTagsForDate(screen.selectedDate, tags)}
+            onChangeMood={(mood) => screen.setMoodForDate(screen.selectedDate, mood)}
+            onChangeTags={(tags) => screen.setTagsForDate(screen.selectedDate, tags)}
             onChangeContext={(key, value) =>
-              void screen.setContextForDate(screen.selectedDate, key, value)
+              screen.setContextForDate(screen.selectedDate, key, value)
             }
             entriesMap={screen.map}
             availableTags={screen.settings.customTags}

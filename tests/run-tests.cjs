@@ -19,6 +19,10 @@ const {
 } = require("../utils/history");
 const { buildReadableSummary } = require("../utils/shareSummary");
 const {
+  getMillisecondsUntilNextLocalDay,
+  isFutureISODate,
+} = require("../utils/date");
+const {
   buildAnalysisExperiments,
   buildAnalysisLenses,
   buildAnalysisProfile,
@@ -32,6 +36,58 @@ const {
   getWeekdayRhythmSummary,
 } = require("../utils/insights");
 
+const asyncStorageModulePath = require.resolve("@react-native-async-storage/async-storage");
+
+function deleteModuleIfLoaded(modulePath) {
+  try {
+    delete require.cache[require.resolve(modulePath)];
+  } catch {}
+}
+
+function loadStorageHarness() {
+  const store = new Map();
+  const asyncStorageMock = {
+    async getItem(key) {
+      return store.has(key) ? store.get(key) : null;
+    },
+    async setItem(key, value) {
+      store.set(key, value);
+    },
+    async removeItem(key) {
+      store.delete(key);
+    },
+    async clear() {
+      store.clear();
+    },
+  };
+
+  require.cache[asyncStorageModulePath] = {
+    id: asyncStorageModulePath,
+    filename: asyncStorageModulePath,
+    loaded: true,
+    exports: {
+      __esModule: true,
+      default: asyncStorageMock,
+      ...asyncStorageMock,
+    },
+  };
+
+  [
+    "../storage/index",
+    "../storage/json",
+    "../storage/keys",
+    "../storage/moodStorage",
+    "../storage/appSettingsStorage",
+    "../utils/backup",
+  ].forEach((modulePath) => deleteModuleIfLoaded(modulePath));
+
+  return {
+    moodStorage: require("../storage/moodStorage").moodStorage,
+    appSettingsStorage: require("../storage/appSettingsStorage").appSettingsStorage,
+    backupUtils: require("../utils/backup"),
+  };
+}
+
 function makeEntry(date, mood, extras = {}) {
   return {
     date,
@@ -42,14 +98,21 @@ function makeEntry(date, mood, extras = {}) {
   };
 }
 
+const pendingRuns = [];
+
 function run(name, fn) {
-  try {
-    fn();
-    console.log(`PASS ${name}`);
-  } catch (error) {
-    console.error(`FAIL ${name}`);
-    throw error;
-  }
+  const pending = Promise.resolve()
+    .then(fn)
+    .then(() => {
+      console.log(`PASS ${name}`);
+    })
+    .catch((error) => {
+      console.error(`FAIL ${name}`);
+      throw error;
+    });
+
+  pendingRuns.push(pending);
+  return pending;
 }
 
 function buildSummary(range, entries) {
@@ -376,6 +439,18 @@ run("buildReadableSummary uses recent-range wording for last 3 months", () => {
     /This summary focuses more on recent patterns than month-over-month comparison\./
   );
   assert.match(summary, /Most common mood in this range:/);
+});
+
+run("buildReadableSummary ignores future-dated entries in this-month summaries", () => {
+  const entries = [
+    makeEntry("2026-04-29", "happy", { tags: ["rest"] }),
+    makeEntry("2026-04-30", "sad", { tags: ["work"] }),
+  ];
+
+  const summary = buildSummary("thisMonth", entries);
+
+  assert.match(summary, /April 2026: 1 check-in\./);
+  assert.doesNotMatch(summary, /#work/);
 });
 
 run("getMoodMixSummary describes a dominant mood mix clearly", () => {
@@ -865,4 +940,152 @@ run("buildNarrativeSummary calls out when a repeated combo is the real story", (
   );
 });
 
-console.log("All interpretation tests passed.");
+run("isFutureISODate only flags dates after the current local day", () => {
+  const now = new Date(2026, 3, 29, 12, 0, 0, 0);
+
+  assert.equal(isFutureISODate("2026-04-28", now), false);
+  assert.equal(isFutureISODate("2026-04-29", now), false);
+  assert.equal(isFutureISODate("2026-04-30", now), true);
+});
+
+run("getMillisecondsUntilNextLocalDay measures time to the next midnight", () => {
+  const now = new Date(2026, 3, 29, 23, 59, 59, 500);
+
+  assert.equal(getMillisecondsUntilNextLocalDay(now), 500);
+});
+
+run("moodStorage serializes concurrent writes for the same day", async () => {
+  const { moodStorage } = loadStorageHarness();
+
+  await Promise.all([
+    moodStorage.setMoodForDate("2026-04-29", "happy"),
+    moodStorage.setTagsForDate("2026-04-29", ["work"]),
+  ]);
+
+  const entry = await moodStorage.getByDate("2026-04-29");
+
+  assert.equal(entry?.mood, "happy");
+  assert.deepEqual(entry?.tags, ["work"]);
+});
+
+run("moodStorage replaceAll sanitizes invalid entries and cleans tags", async () => {
+  const { moodStorage } = loadStorageHarness();
+
+  const restored = await moodStorage.replaceAll([
+    makeEntry("2026-04-29", "happy", {
+      tags: ["  work  ", "rest", "work"],
+      sleep: 9,
+      stress: 0,
+    }),
+    makeEntry("2026-02-30", "sad"),
+  ]);
+
+  assert.equal(restored.length, 1);
+  assert.deepEqual(restored[0]?.tags, ["rest", "work"]);
+  assert.equal(restored[0]?.sleep, 5);
+  assert.equal(restored[0]?.stress, 1);
+});
+
+run("importBackupPayloadAsync merge keeps current reminders and newer entry versions", async () => {
+  const { moodStorage, appSettingsStorage, backupUtils } = loadStorageHarness();
+
+  await moodStorage.replaceAll([
+    makeEntry("2026-04-29", "happy", {
+      updatedAt: 1,
+      tags: ["rest"],
+    }),
+  ]);
+  await appSettingsStorage.replaceAll({
+    customTags: ["rest"],
+    reminders: {
+      enabled: true,
+      time: "21:30",
+      weekdays: [1, 3, 5],
+      skipIfLogged: true,
+    },
+  });
+
+  const backupPayload = JSON.stringify({
+    version: 1,
+    exportedAt: "2026-04-29T10:00:00.000Z",
+    entries: [
+      makeEntry("2026-04-29", "sad", {
+        updatedAt: 2,
+        tags: ["work"],
+      }),
+      makeEntry("2026-04-28", "neutral", {
+        updatedAt: 2,
+      }),
+    ],
+    settings: {
+      customTags: ["work"],
+      reminders: {
+        enabled: false,
+        time: "08:00",
+        weekdays: [0, 2, 4],
+        skipIfLogged: false,
+      },
+    },
+  });
+
+  const result = await backupUtils.importBackupPayloadAsync(backupPayload, "merge");
+  const mergedEntries = await moodStorage.getAll();
+  const mergedSettings = await appSettingsStorage.getAll();
+
+  assert.equal(result.entryCount, 2);
+  assert.equal(mergedEntries[0]?.date, "2026-04-29");
+  assert.equal(mergedEntries[0]?.mood, "sad");
+  assert.deepEqual(mergedSettings.customTags, ["rest", "work"]);
+  assert.equal(mergedSettings.reminders.enabled, true);
+  assert.equal(mergedSettings.reminders.time, "21:30");
+});
+
+run("importBackupPayloadAsync replace swaps entries and settings entirely", async () => {
+  const { moodStorage, appSettingsStorage, backupUtils } = loadStorageHarness();
+
+  await moodStorage.replaceAll([makeEntry("2026-04-20", "happy")]);
+  await appSettingsStorage.replaceAll({
+    customTags: ["old"],
+    reminders: {
+      enabled: true,
+      time: "19:00",
+      weekdays: [1, 2, 3, 4, 5],
+      skipIfLogged: true,
+    },
+  });
+
+  const backupPayload = JSON.stringify({
+    version: 1,
+    exportedAt: "2026-04-29T10:00:00.000Z",
+    entries: [makeEntry("2026-04-29", "anxious", { tags: ["deadline"] })],
+    settings: {
+      customTags: ["deadline"],
+      reminders: {
+        enabled: false,
+        time: "08:15",
+        weekdays: [0, 6],
+        skipIfLogged: false,
+      },
+    },
+  });
+
+  const result = await backupUtils.importBackupPayloadAsync(backupPayload, "replace");
+  const restoredEntries = await moodStorage.getAll();
+  const restoredSettings = await appSettingsStorage.getAll();
+
+  assert.equal(result.entryCount, 1);
+  assert.equal(restoredEntries[0]?.date, "2026-04-29");
+  assert.equal(restoredEntries[0]?.mood, "anxious");
+  assert.deepEqual(restoredSettings.customTags, ["deadline"]);
+  assert.equal(restoredSettings.reminders.enabled, false);
+  assert.equal(restoredSettings.reminders.time, "08:15");
+});
+
+Promise.all(pendingRuns)
+  .then(() => {
+    console.log("All interpretation tests passed.");
+  })
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });

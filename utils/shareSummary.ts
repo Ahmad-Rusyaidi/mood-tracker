@@ -9,6 +9,7 @@ import {
   getTopSupportiveTags,
   getWeekComparison,
 } from "@/utils/moodStats";
+import { toISODateLocal } from "@/utils";
 
 export type SummaryRange = "last7" | "thisMonth" | "last3Months";
 
@@ -60,16 +61,20 @@ export function buildReadableSummary(
   today = new Date(),
   range: SummaryRange = "thisMonth"
 ) {
+  const visibleEntries = entries.filter((entry) => entry.date <= toISODateLocal(today));
   const thisMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-  const weekEntries = range === "last7" ? getEntriesForRecentDays(entries, today, 7) : getEntriesForWeek(entries, today);
+  const weekEntries =
+    range === "last7"
+      ? getEntriesForRecentDays(visibleEntries, today, 7)
+      : getEntriesForWeek(visibleEntries, today);
   const monthEntries =
     range === "last3Months"
-      ? getEntriesForRecentDays(entries, today, 90)
+      ? getEntriesForRecentDays(visibleEntries, today, 90)
       : range === "last7"
-        ? getEntriesForRecentDays(entries, today, 7)
-        : getEntriesForMonth(entries, thisMonth);
-  const weekComparison = getWeekComparison(entries, today);
-  const monthComparison = getMonthComparison(entries, thisMonth);
+        ? getEntriesForRecentDays(visibleEntries, today, 7)
+        : getEntriesForMonth(visibleEntries, thisMonth);
+  const weekComparison = getWeekComparison(visibleEntries, today);
+  const monthComparison = getMonthComparison(visibleEntries, thisMonth);
   const supportiveTag = getTopSupportiveTags(monthEntries, 1)[0];
   const challengingTag = getTopChallengingTags(monthEntries, 1)[0];
   const strongestSignal = getContextSignals(monthEntries)[0] ?? null;

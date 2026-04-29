@@ -15,10 +15,11 @@ import {
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, useWindowDimensions } from "react-native";
+import { useCurrentDate } from "./useCurrentDate";
 
 export function useHomeScreen() {
   const params = useLocalSearchParams<{ date?: string; view?: string }>();
-  const today = useMemo(() => new Date(), []);
+  const today = useCurrentDate();
   const [month, setMonth] = useState(
     new Date(today.getFullYear(), today.getMonth(), 1)
   );
