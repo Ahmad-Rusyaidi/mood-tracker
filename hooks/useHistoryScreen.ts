@@ -2,9 +2,12 @@ import { useMoodEntries } from "@/hooks/useMoodEntries";
 import type { Mood, MoodContextKey } from "@/types";
 import type { ContextBand } from "@/utils/moodStats";
 import {
+  filterEntriesByQuickFocus,
   formatComboFilterLabel,
   formatEntryDate,
   getEntryHighlight,
+  getHistoryQuickFocusExplanation,
+  getHistorySummaryStats,
   getHistorySortExplanation,
   getMonthKey,
   isMoodParam,
@@ -17,6 +20,7 @@ import {
   sortEntriesByRelevance,
   type ComboFilter,
   type ContextFilter,
+  type HistoryQuickFilter,
   type MonthFilter,
   type MoodFilter,
 } from "@/utils/history";
@@ -40,6 +44,8 @@ export function useHistoryScreen() {
   const [selectedTag, setSelectedTag] = useState<string | "all">("all");
   const [selectedContext, setSelectedContext] = useState<ContextFilter>("all");
   const [selectedCombo, setSelectedCombo] = useState<ComboFilter>("all");
+  const [selectedQuickFocus, setSelectedQuickFocus] =
+    useState<HistoryQuickFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const deferredSearchQuery = useDeferredValue(searchQuery);
 
@@ -93,10 +99,10 @@ export function useHistoryScreen() {
     params.combo,
   ]);
 
-  const filteredEntries = useMemo(() => {
+  const matchingEntries = useMemo(() => {
     const normalizedQuery = normalizeQuery(deferredSearchQuery);
 
-    const matchingEntries = entries.filter((entry) => {
+    return entries.filter((entry) => {
       if (selectedMood !== "all" && entry.mood !== selectedMood) return false;
       if (selectedMonth !== "all" && getMonthKey(entry.date) !== selectedMonth) {
         return false;
@@ -109,12 +115,6 @@ export function useHistoryScreen() {
       if (!matchesSearch(entry, normalizedQuery)) return false;
       return true;
     });
-
-    return sortEntriesByRelevance(matchingEntries, {
-      selectedTag,
-      selectedContext,
-      selectedCombo,
-    });
   }, [
     entries,
     selectedMood,
@@ -125,6 +125,24 @@ export function useHistoryScreen() {
     deferredSearchQuery,
   ]);
 
+  const filteredEntries = useMemo(() => {
+    const focusedEntries = filterEntriesByQuickFocus(
+      matchingEntries,
+      selectedQuickFocus
+    );
+    return sortEntriesByRelevance(focusedEntries, {
+      selectedTag,
+      selectedContext,
+      selectedCombo,
+    });
+  }, [
+    matchingEntries,
+    selectedQuickFocus,
+    selectedTag,
+    selectedContext,
+    selectedCombo,
+  ]);
+
   const hasEntries = entries.length > 0;
   const hasFilters =
     selectedMood !== "all" ||
@@ -132,6 +150,7 @@ export function useHistoryScreen() {
     selectedTag !== "all" ||
     selectedContext !== "all" ||
     selectedCombo !== "all" ||
+    selectedQuickFocus !== "all" ||
     normalizeQuery(searchQuery).length > 0;
   const entryLabel = filteredEntries.length === 1 ? "entry" : "entries";
 
@@ -141,6 +160,7 @@ export function useHistoryScreen() {
     setSelectedTag("all");
     setSelectedContext("all");
     setSelectedCombo("all");
+    setSelectedQuickFocus("all");
     setSearchQuery("");
   };
 
@@ -180,8 +200,16 @@ export function useHistoryScreen() {
     selectedContext,
     setSelectedContext,
     selectedCombo,
+    selectedQuickFocus,
+    setSelectedQuickFocus,
     selectedComboLabel: formatComboFilterLabel(selectedCombo),
     sortExplanation: getHistorySortExplanation({
+      selectedTag,
+      selectedContext,
+      selectedCombo,
+    }),
+    quickFocusExplanation: getHistoryQuickFocusExplanation(selectedQuickFocus),
+    summaryStats: getHistorySummaryStats(matchingEntries, {
       selectedTag,
       selectedContext,
       selectedCombo,

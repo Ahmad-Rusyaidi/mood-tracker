@@ -12,16 +12,21 @@ export const styles = StyleSheet.create({
   // Toggle wrapper + sliding indicator
   toggleWrapper: {
     position: "relative",
-    marginBottom: 12,
+    marginBottom: 14,
+    padding: 4,
+    borderRadius: 999,
+    backgroundColor: "#EEF2FF",
+    borderWidth: 1,
+    borderColor: "#DCE5FA",
   },
 
   toggleIndicator: {
     position: "absolute",
-    top: 0,
-    bottom: 0,
-    left: 0,
+    top: 4,
+    bottom: 4,
+    left: 4,
     borderRadius: 999,
-    backgroundColor: colors.primary ?? "#C9D7FF",
+    backgroundColor: "#CDD9FF",
     borderWidth: 1,
     borderColor: "#AFC2FF",
   },
@@ -29,11 +34,11 @@ export const styles = StyleSheet.create({
   // Toggle pills row
   toggleRow: {
     flexDirection: "row",
-    gap: 10,
+    gap: 6,
   },
 
   togglePill: {
-    paddingVertical: 10,
+    paddingVertical: 11,
     borderRadius: 999,
     borderWidth: 1,
     alignItems: "center",
@@ -47,8 +52,8 @@ export const styles = StyleSheet.create({
   },
 
   togglePillInactive: {
-    backgroundColor: colors.card ?? "#FFFFFF",
-    borderColor: colors.border,
+    backgroundColor: "transparent",
+    borderColor: "transparent",
   },
 
   toggleText: {
@@ -70,7 +75,7 @@ export const styles = StyleSheet.create({
   calendarArea: {
     flex: 1,
     justifyContent: "flex-start",
-    alignItems: "center",
+    alignItems: "stretch",
     paddingTop: 10,
   },
 
@@ -78,16 +83,16 @@ export const styles = StyleSheet.create({
     width: "100%",
     flexDirection: "row",
     justifyContent: "flex-start",
-    marginBottom: 10,
+    marginBottom: 12,
   },
 
   filterToggle: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 11,
     borderRadius: 999,
-    backgroundColor: "#EEF2FF",
+    backgroundColor: "#F9FAFF",
     borderWidth: 1,
-    borderColor: "#AFC2FF",
+    borderColor: "#D9E3FA",
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
@@ -96,6 +101,15 @@ export const styles = StyleSheet.create({
   filterToggleText: {
     fontWeight: "900",
     color: colors.text,
+  },
+  filterChevronBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 999,
+    backgroundColor: "#E2E9FF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: -2,
   },
 
   filterCountBadge: {

@@ -7,8 +7,11 @@ const {
   matchesContextBand,
 } = require("../utils/moodStats");
 const {
+  filterEntriesByQuickFocus,
   getEntryHighlight,
   getEntryMatchScore,
+  getHistoryQuickFocusExplanation,
+  getHistorySummaryStats,
   getHistorySortExplanation,
   matchesComboFilter,
   parseComboFilter,
@@ -244,6 +247,65 @@ run("getHistorySortExplanation describes why results are ranked", () => {
       selectedCombo: "all",
     }) ?? "",
     /#walk/i
+  );
+});
+
+run("getHistorySummaryStats returns actionable stat-card counts", () => {
+  const stats = getHistorySummaryStats(
+    [
+      makeEntry("2026-04-29", "happy", { sleep: 4 }),
+      makeEntry("2026-04-28", "neutral"),
+      makeEntry("2026-04-27", "sad", { stress: 5 }),
+      makeEntry("2026-04-26", "anxious"),
+    ],
+    {
+      selectedTag: "all",
+      selectedContext: "high:stress",
+      selectedCombo: "all",
+    }
+  );
+
+  assert.deepEqual(
+    stats.map((item) => item.key),
+    ["primary", "steadier", "harder", "context"]
+  );
+  assert.equal(stats[0]?.label, "pressure days");
+  assert.equal(stats[0]?.value, "4");
+  assert.equal(stats[1]?.value, "2");
+  assert.equal(stats[2]?.value, "2");
+  assert.equal(stats[3]?.value, "2");
+});
+
+run("filterEntriesByQuickFocus narrows entries to the selected stat-card focus", () => {
+  const entries = [
+    makeEntry("2026-04-29", "happy", { sleep: 4 }),
+    makeEntry("2026-04-28", "neutral"),
+    makeEntry("2026-04-27", "sad", { stress: 5 }),
+    makeEntry("2026-04-26", "anxious"),
+  ];
+
+  assert.deepEqual(
+    filterEntriesByQuickFocus(entries, "steadier").map((entry) => entry.date),
+    ["2026-04-29", "2026-04-28"]
+  );
+  assert.deepEqual(
+    filterEntriesByQuickFocus(entries, "harder").map((entry) => entry.date),
+    ["2026-04-27", "2026-04-26"]
+  );
+  assert.deepEqual(
+    filterEntriesByQuickFocus(entries, "context").map((entry) => entry.date),
+    ["2026-04-29", "2026-04-27"]
+  );
+});
+
+run("getHistoryQuickFocusExplanation explains active stat-card focus clearly", () => {
+  assert.match(
+    getHistoryQuickFocusExplanation("harder") ?? "",
+    /harder days inside these matches/i
+  );
+  assert.match(
+    getHistoryQuickFocusExplanation("context") ?? "",
+    /sleep, stress, or energy context/i
   );
 });
 

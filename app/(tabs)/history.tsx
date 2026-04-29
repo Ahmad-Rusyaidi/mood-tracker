@@ -55,6 +55,10 @@ export default function JournalScreen() {
               entryLabel={screen.entryLabel}
               hasFilters={screen.hasFilters}
               sortExplanation={screen.sortExplanation}
+              quickFocusExplanation={screen.quickFocusExplanation}
+              summaryStats={screen.summaryStats}
+              selectedQuickFocus={screen.selectedQuickFocus}
+              onSelectQuickFocus={screen.setSelectedQuickFocus}
             />
           }
           renderItem={({ item }) => (

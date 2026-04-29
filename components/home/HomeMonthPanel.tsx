@@ -5,6 +5,7 @@ import {
 } from "@/components/mood/MonthFilters";
 import { styles } from "@/styles/home.styles";
 import type { MoodEntry } from "@/types";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 
@@ -45,7 +46,13 @@ export function HomeMonthPanel({
             </View>
           ) : null}
 
-          <Text style={styles.filterToggleText}>{filtersOpen ? "^" : "v"}</Text>
+          <View style={styles.filterChevronBadge}>
+            <MaterialIcons
+              name={filtersOpen ? "keyboard-arrow-up" : "keyboard-arrow-down"}
+              size={18}
+              color="#42526B"
+            />
+          </View>
         </Pressable>
       </View>
 

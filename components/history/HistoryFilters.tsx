@@ -6,6 +6,8 @@ import {
   formatMonthLabel,
   type ComboFilter,
   type ContextFilter,
+  type HistoryQuickFilter,
+  type HistorySummaryStat,
   type MonthFilter,
   type MoodFilter,
 } from "@/utils/history";
@@ -79,6 +81,10 @@ export function HistoryFilters({
   entryLabel,
   hasFilters,
   sortExplanation,
+  quickFocusExplanation,
+  summaryStats,
+  selectedQuickFocus,
+  onSelectQuickFocus,
 }: {
   searchQuery: string;
   onChangeSearchQuery: (value: string) => void;
@@ -99,6 +105,10 @@ export function HistoryFilters({
   entryLabel: string;
   hasFilters: boolean;
   sortExplanation?: string | null;
+  quickFocusExplanation?: string | null;
+  summaryStats: HistorySummaryStat[];
+  selectedQuickFocus: HistoryQuickFilter;
+  onSelectQuickFocus: (value: HistoryQuickFilter) => void;
 }) {
   return (
     <View style={styles.headerWrap}>
@@ -196,6 +206,41 @@ export function HistoryFilters({
       </Text>
       {sortExplanation ? (
         <Text style={styles.sortExplanation}>{sortExplanation}</Text>
+      ) : null}
+      <Text style={styles.summaryStatsHint}>
+        Tap a stat to focus this list.
+      </Text>
+
+      <View style={styles.summaryStatsRow}>
+        {summaryStats.map((item) => (
+          <Pressable
+            key={`${item.label}-${item.value}`}
+            onPress={() =>
+              onSelectQuickFocus(
+                item.key === "primary"
+                  ? "all"
+                  : selectedQuickFocus === item.key
+                    ? "all"
+                    : item.key
+              )
+            }
+            style={[
+              styles.summaryStatCard,
+              item.tone === "supportive" ? styles.summaryStatCardSupportive : null,
+              item.tone === "challenging" ? styles.summaryStatCardChallenging : null,
+              (item.key === "primary" && selectedQuickFocus === "all") ||
+              selectedQuickFocus === item.key
+                ? styles.summaryStatCardActive
+                : null,
+            ]}
+          >
+            <Text style={styles.summaryStatValue}>{item.value}</Text>
+            <Text style={styles.summaryStatLabel}>{item.label}</Text>
+          </Pressable>
+        ))}
+      </View>
+      {quickFocusExplanation ? (
+        <Text style={styles.quickFocusExplanation}>{quickFocusExplanation}</Text>
       ) : null}
     </View>
   );

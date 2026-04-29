@@ -3,16 +3,18 @@ import { StyleSheet } from "react-native";
 
 export const styles = StyleSheet.create({
   wrap: {
+    width: "100%",
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
+    borderRadius: 22,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
     backgroundColor: colors.card ?? colors.background,
-    alignSelf: "center",
+    alignSelf: "stretch",
 
     shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
+    shadowOpacity: 0.07,
+    shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
     elevation: 4,
   },
@@ -21,21 +23,43 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: spacing.md,
+    marginBottom: 14,
   },
 
   navBtn: {
-    width: 42,
-    height: 38,
+    width: 40,
+    height: 40,
     borderRadius: 14,
-    backgroundColor: "#F1F5FF",
+    backgroundColor: "#F5F7FF",
+    borderWidth: 1,
+    borderColor: "#E0E7FF",
     alignItems: "center",
     justifyContent: "center",
   },
-  navText: { fontSize: 22, color: colors.text },
 
   monthText: {
-    fontSize: 16,
+    fontSize: 20,
+    fontWeight: "900",
+    letterSpacing: 0.2,
+    color: colors.text,
+  },
+  summaryRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    justifyContent: "center",
+    marginBottom: 14,
+  },
+  summaryPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "#F7F8FF",
+    borderWidth: 1,
+    borderColor: "#E6EBFA",
+  },
+  summaryPillText: {
+    fontSize: 13,
     fontWeight: "800",
     color: colors.text,
   },
@@ -43,14 +67,14 @@ export const styles = StyleSheet.create({
   dowRow: {
     flexDirection: "row",
     justifyContent: "center",
-    marginBottom: spacing.md,
+    marginBottom: 12,
     paddingHorizontal: 2,
   },
   dowText: {
     textAlign: "center",
     color: colors.mutedText,
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "800",
   },
 
   grid: {
@@ -60,7 +84,7 @@ export const styles = StyleSheet.create({
   },
 
   dayBase: {
-    borderRadius: 16,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
@@ -88,12 +112,15 @@ export const styles = StyleSheet.create({
 
   dayNum: {
     position: "absolute",
-    top: 6,
-    left: 7,
+    top: 4,
+    left: 0,
+    width: "100%",
+    textAlign: "center",
     color: colors.text,
-    fontSize: 9,
-    fontWeight: "700",
-    opacity: 0.75,
+    fontSize: 10,
+    lineHeight: 12,
+    fontWeight: "800",
+    opacity: 0.78,
   },
   dayNumSelected: {
     color: colors.text,
@@ -101,8 +128,8 @@ export const styles = StyleSheet.create({
   },
 
   moodEmojiBig: {
-    fontSize: 28,
-    marginTop: 12,
+    fontSize: 24,
+    marginTop: 10,
   },
 
   // ✅ NEW: dim non-matching days

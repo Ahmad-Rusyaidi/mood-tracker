@@ -71,10 +71,11 @@ export function useHomeScreen() {
   }, [params.date, params.view]);
 
   const { width: screenWidth } = useWindowDimensions();
-  const pillGap = 10;
+  const pillGap = 6;
   const pillCount = 3;
+  const togglePadding = 8;
   const availableWidth =
-    screenWidth - spacing.md * 2 - pillGap * (pillCount - 1);
+    screenWidth - spacing.md * 2 - togglePadding - pillGap * (pillCount - 1);
   const pillWidth = Math.max(72, Math.floor(availableWidth / pillCount));
 
   const indicatorX = useRef(new Animated.Value(0)).current;

@@ -12,6 +12,15 @@ export type EntryHighlight = {
   tone: "supportive" | "challenging" | "neutral";
 };
 
+export type HistorySummaryStat = {
+  key: "primary" | "steadier" | "harder" | "context";
+  label: string;
+  value: string;
+  tone: "supportive" | "challenging" | "neutral";
+};
+
+export type HistoryQuickFilter = "all" | "steadier" | "harder" | "context";
+
 export type HistoryMatchFilters = {
   selectedTag: string | "all";
   selectedContext: ContextFilter;
@@ -249,6 +258,34 @@ function isSteadyMood(mood: Mood) {
   return mood === "happy" || mood === "neutral";
 }
 
+export function matchesHistoryQuickFilter(
+  entry: MoodEntry,
+  filter: HistoryQuickFilter
+) {
+  if (filter === "all") return true;
+  if (filter === "steadier") return isSteadyMood(entry.mood);
+  if (filter === "harder") return isHardMood(entry.mood);
+  return entry.sleep != null || entry.stress != null || entry.energy != null;
+}
+
+function getPrimarySummaryLabel(filters: HistoryMatchFilters) {
+  if (filters.selectedCombo !== "all") {
+    const hasChallengingFeature = filters.selectedCombo
+      .split("|")
+      .some((feature) => getFeatureTone(feature) === "challenging");
+
+    return hasChallengingFeature ? "pattern days" : "support days";
+  }
+
+  if (filters.selectedContext === "high:stress") return "pressure days";
+  if (filters.selectedContext === "low:sleep") return "low-sleep days";
+  if (filters.selectedContext === "high:sleep") return "rested days";
+  if (filters.selectedContext === "low:energy") return "low-energy days";
+  if (filters.selectedContext === "high:energy") return "high-energy days";
+  if (filters.selectedTag !== "all") return `#${filters.selectedTag} days`;
+  return "matches";
+}
+
 function getFeatureMatchScore(entry: MoodEntry, feature: string) {
   if (!matchesFeature(entry, feature)) return 0;
 
@@ -357,6 +394,69 @@ export function getHistorySortExplanation(filters: HistoryMatchFilters) {
 
   if (filters.selectedTag !== "all") {
     return `Showing strongest #${filters.selectedTag} matches first.`;
+  }
+
+  return null;
+}
+
+export function getHistorySummaryStats(
+  entries: MoodEntry[],
+  filters: HistoryMatchFilters
+): HistorySummaryStat[] {
+  const total = entries.length;
+  const steadyCount = entries.filter((entry) => isSteadyMood(entry.mood)).length;
+  const hardCount = entries.filter((entry) => isHardMood(entry.mood)).length;
+  const contextCount = entries.filter(
+    (entry) => entry.sleep != null || entry.stress != null || entry.energy != null
+  ).length;
+
+  return [
+    {
+      key: "primary",
+      label: getPrimarySummaryLabel(filters),
+      value: `${total}`,
+      tone: "neutral",
+    },
+    {
+      key: "steadier",
+      label: "steadier days",
+      value: `${steadyCount}`,
+      tone: "supportive",
+    },
+    {
+      key: "harder",
+      label: "harder days",
+      value: `${hardCount}`,
+      tone: "challenging",
+    },
+    {
+      key: "context",
+      label: "with context",
+      value: `${contextCount}`,
+      tone: "neutral",
+    },
+  ];
+}
+
+export function filterEntriesByQuickFocus(
+  entries: MoodEntry[],
+  filter: HistoryQuickFilter
+) {
+  if (filter === "all") return entries;
+  return entries.filter((entry) => matchesHistoryQuickFilter(entry, filter));
+}
+
+export function getHistoryQuickFocusExplanation(filter: HistoryQuickFilter) {
+  if (filter === "steadier") {
+    return "Focused on steadier days inside these matches.";
+  }
+
+  if (filter === "harder") {
+    return "Focused on harder days inside these matches.";
+  }
+
+  if (filter === "context") {
+    return "Focused on entries with sleep, stress, or energy context.";
   }
 
   return null;
