@@ -54,6 +54,7 @@ export default function JournalScreen() {
               filteredCount={screen.filteredEntries.length}
               entryLabel={screen.entryLabel}
               hasFilters={screen.hasFilters}
+              sortExplanation={screen.sortExplanation}
             />
           }
           renderItem={({ item }) => (

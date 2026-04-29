@@ -78,6 +78,7 @@ export function HistoryFilters({
   filteredCount,
   entryLabel,
   hasFilters,
+  sortExplanation,
 }: {
   searchQuery: string;
   onChangeSearchQuery: (value: string) => void;
@@ -97,6 +98,7 @@ export function HistoryFilters({
   filteredCount: number;
   entryLabel: string;
   hasFilters: boolean;
+  sortExplanation?: string | null;
 }) {
   return (
     <View style={styles.headerWrap}>
@@ -192,6 +194,9 @@ export function HistoryFilters({
         {filteredCount} {entryLabel}
         {hasFilters ? " matching your filters" : " saved"}
       </Text>
+      {sortExplanation ? (
+        <Text style={styles.sortExplanation}>{sortExplanation}</Text>
+      ) : null}
     </View>
   );
 }

@@ -339,6 +339,29 @@ export function sortEntriesByRelevance(
   });
 }
 
+export function getHistorySortExplanation(filters: HistoryMatchFilters) {
+  if (filters.selectedCombo !== "all") {
+    const tone = filters.selectedCombo
+      .split("|")
+      .some((feature) => getFeatureTone(feature) === "challenging")
+      ? "pressure-pattern"
+      : "support-pattern";
+
+    return `Showing strongest ${tone} matches first.`;
+  }
+
+  if (filters.selectedContext !== "all") {
+    const detail = formatComboFilterLabel(filters.selectedContext.replace(":", "_"));
+    return `Showing strongest ${detail.toLowerCase()} matches first.`;
+  }
+
+  if (filters.selectedTag !== "all") {
+    return `Showing strongest #${filters.selectedTag} matches first.`;
+  }
+
+  return null;
+}
+
 export function getContextPreview(entry: MoodEntry) {
   const parts: string[] = [];
 

@@ -1,3 +1,5 @@
+# Vibe Code App
+
 # Mood Tracker
 
 **Track your mood in seconds, spot what affects it, and reflect on your emotional patterns over time.**

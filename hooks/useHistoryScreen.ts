@@ -5,6 +5,7 @@ import {
   formatComboFilterLabel,
   formatEntryDate,
   getEntryHighlight,
+  getHistorySortExplanation,
   getMonthKey,
   isMoodParam,
   matchesComboFilter,
@@ -180,6 +181,11 @@ export function useHistoryScreen() {
     setSelectedContext,
     selectedCombo,
     selectedComboLabel: formatComboFilterLabel(selectedCombo),
+    sortExplanation: getHistorySortExplanation({
+      selectedTag,
+      selectedContext,
+      selectedCombo,
+    }),
     getEntryHighlight: (entry: (typeof entries)[number]) =>
       getEntryHighlight({
         entry,

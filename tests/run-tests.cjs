@@ -9,6 +9,7 @@ const {
 const {
   getEntryHighlight,
   getEntryMatchScore,
+  getHistorySortExplanation,
   matchesComboFilter,
   parseComboFilter,
   sortEntriesByRelevance,
@@ -223,6 +224,26 @@ run("sortEntriesByRelevance keeps date order when no match-driven filters are ac
   assert.deepEqual(
     sorted.map((entry) => entry.date),
     ["2026-04-29", "2026-04-28", "2026-04-27"]
+  );
+});
+
+run("getHistorySortExplanation describes why results are ranked", () => {
+  assert.match(
+    getHistorySortExplanation({
+      selectedTag: "all",
+      selectedContext: "all",
+      selectedCombo: "high_stress|low_sleep",
+    }) ?? "",
+    /pressure-pattern/i
+  );
+
+  assert.match(
+    getHistorySortExplanation({
+      selectedTag: "walk",
+      selectedContext: "all",
+      selectedCombo: "all",
+    }) ?? "",
+    /#walk/i
   );
 });
 

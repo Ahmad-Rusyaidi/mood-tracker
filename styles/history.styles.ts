@@ -30,6 +30,12 @@ export const styles = StyleSheet.create({
     color: colors.mutedText,
     marginTop: -2,
   },
+  sortExplanation: {
+    ...typography.caption,
+    color: "#355D9A",
+    fontWeight: "700",
+    marginTop: -6,
+  },
   filterSection: {
     gap: spacing.sm,
   },
