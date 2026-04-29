@@ -188,7 +188,16 @@ export function NarrativeSummaryCard({
   summary,
   focus,
   tone,
-}: NarrativeSummaryData) {
+  comboTitle,
+  comboDetail,
+  comboTone,
+  actions,
+  onComboPress,
+  onActionPress,
+}: NarrativeSummaryData & {
+  onComboPress?: (() => void) | null;
+  onActionPress?: ((index: number) => void) | null;
+}) {
   return (
     <View
       style={[
@@ -206,6 +215,22 @@ export function NarrativeSummaryCard({
       >
         {eyebrow}
       </Text>
+      {comboTitle && comboDetail ? (
+        <Pressable
+          disabled={!onComboPress}
+          onPress={onComboPress ?? undefined}
+          style={[
+            styles.narrativeComboCard,
+            comboTone === "supportive" ? styles.narrativeComboCardSupportive : null,
+            comboTone === "challenging" ? styles.narrativeComboCardChallenging : null,
+            onComboPress ? styles.narrativeComboCardPressable : null,
+          ]}
+        >
+          <Text style={styles.narrativeComboTitle}>{comboTitle}</Text>
+          <Text style={styles.narrativeComboDetail}>{comboDetail}</Text>
+          {onComboPress ? <Text style={styles.narrativeComboLink}>Open matching days</Text> : null}
+        </Pressable>
+      ) : null}
       <Text
         style={[
           styles.narrativeSummary,
@@ -215,6 +240,20 @@ export function NarrativeSummaryCard({
       >
         {summary}
       </Text>
+      {actions && actions.length > 0 ? (
+        <View style={styles.narrativeActionsRow}>
+          {actions.map((action, index) => (
+            <Pressable
+              key={`${action.kind}-${action.label}-${index}`}
+              disabled={!onActionPress}
+              onPress={onActionPress ? () => onActionPress(index) : undefined}
+              style={styles.narrativeActionChip}
+            >
+              <Text style={styles.narrativeActionChipText}>{action.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
       <View
         style={[
           styles.narrativeFocusPill,

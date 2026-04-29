@@ -48,6 +48,9 @@ export default function JournalScreen() {
               tagOptions={screen.tagOptions}
               selectedContext={screen.selectedContext}
               onSelectContext={screen.setSelectedContext}
+              selectedCombo={screen.selectedCombo}
+              comboLabel={screen.selectedComboLabel}
+              onClearCombo={() => screen.setSelectedCombo("all")}
               filteredCount={screen.filteredEntries.length}
               entryLabel={screen.entryLabel}
               hasFilters={screen.hasFilters}
@@ -56,6 +59,7 @@ export default function JournalScreen() {
           renderItem={({ item }) => (
             <HistoryEntryCard
               entry={item}
+              highlight={screen.getEntryHighlight(item)}
               onEdit={() =>
                 router.push({
                   pathname: "/",

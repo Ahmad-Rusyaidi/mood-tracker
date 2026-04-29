@@ -57,6 +57,40 @@ export default function InsightsScreen() {
     });
   };
 
+  const openComboHistory = (combo?: string) => {
+    if (!combo) return;
+
+    router.push({
+      pathname: "/history",
+      params: {
+        combo,
+      },
+    });
+  };
+
+  const openNarrativeAction = (
+    action?: (typeof insights.analysis.narrative.actions)[number]
+  ) => {
+    if (!action) return;
+
+    if (action.kind === "combo" && action.combo) {
+      openComboHistory(action.combo);
+      return;
+    }
+
+    if (action.kind === "tag" && action.tag) {
+      openTagHistory(action.tag);
+      return;
+    }
+
+    if (action.kind === "context" && action.contextKey && action.contextBand) {
+      openContextHistory({
+        key: action.contextKey,
+        band: action.contextBand,
+      });
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {insights.screenState === "loading" ? (
@@ -141,7 +175,17 @@ export default function InsightsScreen() {
               subtitle="A fuller interpretation of your recent emotions, tags, and context signals together."
             />
 
-            <NarrativeSummaryCard {...insights.analysis.narrative} />
+            <NarrativeSummaryCard
+              {...insights.analysis.narrative}
+              onComboPress={
+                insights.analysis.narrative.comboFilter
+                  ? () => openComboHistory(insights.analysis.narrative.comboFilter)
+                  : null
+              }
+              onActionPress={(index) =>
+                openNarrativeAction(insights.analysis.narrative.actions?.[index])
+              }
+            />
             <AnalysisProfileCard {...insights.analysis.profile} />
 
             <View style={styles.grid}>

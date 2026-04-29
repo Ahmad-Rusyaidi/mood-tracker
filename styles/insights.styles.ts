@@ -295,6 +295,47 @@ export const styles = StyleSheet.create({
   narrativeEyebrowCare: {
     color: "#A65E25",
   },
+  narrativeComboCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#D9E6FF",
+    backgroundColor: "rgba(255,255,255,0.75)",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 3,
+    alignSelf: "flex-start",
+    maxWidth: "100%",
+  },
+  narrativeComboCardSupportive: {
+    backgroundColor: "#F4FCF5",
+    borderColor: "#CAE8D1",
+  },
+  narrativeComboCardChallenging: {
+    backgroundColor: "#FFF7EF",
+    borderColor: "#F0D3B5",
+  },
+  narrativeComboCardPressable: {
+    borderColor: "#C9D8F6",
+  },
+  narrativeComboTitle: {
+    ...typography.caption,
+    color: "#48617F",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    fontWeight: "800",
+  },
+  narrativeComboDetail: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: "#5A6C83",
+    fontWeight: "700",
+  },
+  narrativeComboLink: {
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#1D4ED8",
+  },
   narrativeSummary: {
     fontSize: 18,
     lineHeight: 26,
@@ -306,6 +347,24 @@ export const styles = StyleSheet.create({
   },
   narrativeSummaryCare: {
     color: "#6A3516",
+  },
+  narrativeActionsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  narrativeActionChip: {
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.82)",
+    borderWidth: 1,
+    borderColor: "#D7E3FF",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  narrativeActionChipText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#1D4ED8",
   },
   narrativeFocusPill: {
     alignSelf: "flex-start",

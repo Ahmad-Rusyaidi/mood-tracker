@@ -6,6 +6,13 @@ const {
   getWeekWarnings,
   matchesContextBand,
 } = require("../utils/moodStats");
+const {
+  getEntryHighlight,
+  getEntryMatchScore,
+  matchesComboFilter,
+  parseComboFilter,
+  sortEntriesByRelevance,
+} = require("../utils/history");
 const { buildReadableSummary } = require("../utils/shareSummary");
 const {
   buildAnalysisExperiments,
@@ -94,6 +101,129 @@ run("matchesContextBand detects low and high bands correctly", () => {
   assert.equal(matchesContextBand(entry, "stress", "low"), false);
   assert.equal(matchesContextBand(entry, "sleep", "low"), true);
   assert.equal(matchesContextBand(entry, "energy", "high"), true);
+});
+
+run("parseComboFilter normalizes valid combo params", () => {
+  assert.equal(parseComboFilter("low_sleep|high_stress"), "high_stress|low_sleep");
+  assert.equal(parseComboFilter("tag:work|high_stress"), "high_stress|tag:work");
+  assert.equal(parseComboFilter("sleep"), "all");
+});
+
+run("matchesComboFilter matches entries that satisfy all combo features", () => {
+  const entry = makeEntry("2026-04-29", "sad", {
+    stress: 5,
+    sleep: 2,
+    tags: ["work"],
+  });
+
+  assert.equal(matchesComboFilter(entry, "high_stress|low_sleep"), true);
+  assert.equal(matchesComboFilter(entry, "high_stress|tag:work"), true);
+  assert.equal(matchesComboFilter(entry, "high_stress|high_energy"), false);
+});
+
+run("getEntryHighlight prioritizes combo matches and describes why an entry matched", () => {
+  const entry = makeEntry("2026-04-29", "sad", {
+    stress: 5,
+    sleep: 2,
+    tags: ["work"],
+  });
+
+  const highlight = getEntryHighlight({
+    entry,
+    selectedTag: "work",
+    selectedContext: "high:stress",
+    selectedCombo: "high_stress|low_sleep",
+  });
+
+  assert.equal(highlight?.label, "Matched pattern");
+  assert.match(highlight?.detail ?? "", /High stress \+ Low sleep/i);
+  assert.equal(highlight?.tone, "challenging");
+});
+
+run("getEntryHighlight falls back to context or tag matches when no combo is active", () => {
+  const entry = makeEntry("2026-04-29", "happy", {
+    sleep: 5,
+    tags: ["walk"],
+  });
+
+  const contextHighlight = getEntryHighlight({
+    entry,
+    selectedTag: "all",
+    selectedContext: "high:sleep",
+    selectedCombo: "all",
+  });
+  const tagHighlight = getEntryHighlight({
+    entry,
+    selectedTag: "walk",
+    selectedContext: "all",
+    selectedCombo: "all",
+  });
+
+  assert.equal(contextHighlight?.label, "Matched signal");
+  assert.equal(contextHighlight?.detail, "Good sleep");
+  assert.equal(contextHighlight?.tone, "supportive");
+  assert.equal(tagHighlight?.label, "Matched tag");
+  assert.equal(tagHighlight?.detail, "#walk");
+});
+
+run("getEntryMatchScore ranks stronger context matches above weaker ones", () => {
+  const stronger = makeEntry("2026-04-29", "sad", {
+    stress: 5,
+    sleep: 1,
+  });
+  const weaker = makeEntry("2026-04-28", "sad", {
+    stress: 4,
+    sleep: 2,
+  });
+
+  const strongerScore = getEntryMatchScore(stronger, {
+    selectedTag: "all",
+    selectedContext: "high:stress",
+    selectedCombo: "all",
+  });
+  const weakerScore = getEntryMatchScore(weaker, {
+    selectedTag: "all",
+    selectedContext: "high:stress",
+    selectedCombo: "all",
+  });
+
+  assert.ok(strongerScore > weakerScore);
+});
+
+run("sortEntriesByRelevance prioritizes stronger combo matches before recency", () => {
+  const entries = [
+    makeEntry("2026-04-29", "sad", { stress: 4, sleep: 2 }),
+    makeEntry("2026-04-28", "anxious", { stress: 5, sleep: 1 }),
+    makeEntry("2026-04-27", "sad", { stress: 5, sleep: 2 }),
+  ];
+
+  const sorted = sortEntriesByRelevance(entries, {
+    selectedTag: "all",
+    selectedContext: "all",
+    selectedCombo: "high_stress|low_sleep",
+  });
+
+  assert.equal(sorted[0]?.date, "2026-04-28");
+  assert.equal(sorted[1]?.date, "2026-04-27");
+});
+
+run("sortEntriesByRelevance keeps date order when no match-driven filters are active", () => {
+  const entries = [
+    makeEntry("2026-04-27", "sad"),
+    makeEntry("2026-04-29", "happy"),
+    makeEntry("2026-04-28", "neutral"),
+  ];
+
+  const sorted = sortEntriesByRelevance(entries, {
+    selectedTag: "all",
+    selectedContext: "all",
+    selectedCombo: "all",
+  });
+
+  assert.deepEqual(
+    sorted.map((entry) => entry.date),
+    ["2026-04-29", "2026-04-28", "2026-04-27"]
+  );
 });
 
 run("getWeekWarnings surfaces hard-streak warnings when a tough run stacks up", () => {
@@ -534,6 +664,122 @@ run("buildNarrativeSummary uses this-week wording when recent data is concentrat
   });
 
   assert.match(narrative.summary, /this week/i);
+});
+
+run("buildNarrativeSummary admits when context is still too sparse to explain the pattern", () => {
+  const narrative = buildNarrativeSummary({
+    entries: [
+      makeEntry("2026-04-21", "happy"),
+      makeEntry("2026-04-22", "neutral"),
+      makeEntry("2026-04-23", "sad"),
+      makeEntry("2026-04-24", "neutral"),
+      makeEntry("2026-04-25", "happy"),
+    ],
+    supportiveTag: { tag: "walk", count: 2 },
+    challengingTag: { tag: "work", count: 2 },
+    strongestContext: null,
+    sleepSignal: null,
+    stressSignal: null,
+    energySignal: null,
+    bestWeekday: null,
+    sleepCount: 1,
+    stressCount: 0,
+    energyCount: 3,
+  });
+
+  assert.match(narrative.summary, /sleep and stress may matter here too/i);
+  assert.match(narrative.summary, /not enough logs/i);
+});
+
+run("buildAnalysisExperiments prioritizes a repeated hard combo over isolated signals", () => {
+  const experiments = buildAnalysisExperiments({
+    supportiveTag: { tag: "walk", count: 2 },
+    challengingTag: { tag: "work", count: 4 },
+    sleepSignal: {
+      key: "sleep",
+      lowCount: 3,
+      highCount: 2,
+      lowAverageScore: 1.5,
+      highAverageScore: 3.5,
+      delta: 2,
+    },
+    stressSignal: {
+      key: "stress",
+      lowCount: 2,
+      highCount: 4,
+      lowAverageScore: 3.5,
+      highAverageScore: 1.5,
+      delta: -2,
+    },
+    energySignal: null,
+    bestWeekday: null,
+    strongestCombo: {
+      features: ["high_stress", "low_sleep"],
+      count: 3,
+      averageScore: 1,
+      deltaFromBaseline: -1.8,
+      tone: "challenging",
+    },
+  });
+
+  assert.equal(experiments[0]?.label, "Main focus");
+  assert.match(experiments[0]?.title ?? "", /sleep before high-stress days/i);
+});
+
+run("buildNarrativeSummary calls out when a repeated combo is the real story", () => {
+  const narrative = buildNarrativeSummary({
+    entries: [
+      makeEntry("2026-04-21", "neutral"),
+      makeEntry("2026-04-22", "sad"),
+      makeEntry("2026-04-23", "anxious"),
+      makeEntry("2026-04-24", "sad"),
+      makeEntry("2026-04-25", "neutral"),
+      makeEntry("2026-04-26", "sad"),
+    ],
+    supportiveTag: undefined,
+    challengingTag: { tag: "work", count: 3 },
+    strongestContext: {
+      key: "stress",
+      lowCount: 2,
+      highCount: 4,
+      lowAverageScore: 3.5,
+      highAverageScore: 1.5,
+      delta: -2,
+    },
+    sleepSignal: null,
+    stressSignal: {
+      key: "stress",
+      lowCount: 2,
+      highCount: 4,
+      lowAverageScore: 3.5,
+      highAverageScore: 1.5,
+      delta: -2,
+    },
+    energySignal: null,
+    bestWeekday: null,
+    sleepCount: 4,
+    stressCount: 4,
+    energyCount: 0,
+    strongestCombo: {
+      features: ["high_stress", "low_sleep"],
+      count: 3,
+      averageScore: 1,
+      deltaFromBaseline: -1.8,
+      tone: "challenging",
+    },
+  });
+
+  assert.match(narrative.summary, /high stress landing on low-sleep days/i);
+  assert.match(narrative.focus, /sleep before high-stress days/i);
+  assert.equal(narrative.comboTitle, "Strong combo detected");
+  assert.match(narrative.comboDetail ?? "", /High stress \+ low sleep/i);
+  assert.equal(narrative.comboFilter, "high_stress|low_sleep");
+  assert.ok(
+    (narrative.actions ?? []).some((action) => action.label === "Open pressure days")
+  );
+  assert.ok(
+    (narrative.actions ?? []).some((action) => action.label === "Open combo days")
+  );
 });
 
 console.log("All interpretation tests passed.");

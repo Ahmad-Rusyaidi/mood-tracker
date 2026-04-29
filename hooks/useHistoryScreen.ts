@@ -2,13 +2,19 @@ import { useMoodEntries } from "@/hooks/useMoodEntries";
 import type { Mood, MoodContextKey } from "@/types";
 import type { ContextBand } from "@/utils/moodStats";
 import {
+  formatComboFilterLabel,
   formatEntryDate,
+  getEntryHighlight,
   getMonthKey,
   isMoodParam,
+  matchesComboFilter,
   matchesContextFilter,
   matchesSearch,
   normalizeQuery,
+  parseComboFilter,
   parseContextFilter,
+  sortEntriesByRelevance,
+  type ComboFilter,
   type ContextFilter,
   type MonthFilter,
   type MoodFilter,
@@ -25,12 +31,14 @@ export function useHistoryScreen() {
     q?: string;
     contextKey?: MoodContextKey;
     contextBand?: ContextBand;
+    combo?: string;
   }>();
   const { entries, isLoading, removeByDate } = useMoodEntries();
   const [selectedMood, setSelectedMood] = useState<MoodFilter>("all");
   const [selectedMonth, setSelectedMonth] = useState<MonthFilter>("all");
   const [selectedTag, setSelectedTag] = useState<string | "all">("all");
   const [selectedContext, setSelectedContext] = useState<ContextFilter>("all");
+  const [selectedCombo, setSelectedCombo] = useState<ComboFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const deferredSearchQuery = useDeferredValue(searchQuery);
 
@@ -73,6 +81,7 @@ export function useHistoryScreen() {
     }
 
     setSelectedContext(parseContextFilter(params.contextKey, params.contextBand));
+    setSelectedCombo(parseComboFilter(params.combo));
   }, [
     params.tag,
     params.mood,
@@ -80,12 +89,13 @@ export function useHistoryScreen() {
     params.q,
     params.contextKey,
     params.contextBand,
+    params.combo,
   ]);
 
   const filteredEntries = useMemo(() => {
     const normalizedQuery = normalizeQuery(deferredSearchQuery);
 
-    return entries.filter((entry) => {
+    const matchingEntries = entries.filter((entry) => {
       if (selectedMood !== "all" && entry.mood !== selectedMood) return false;
       if (selectedMonth !== "all" && getMonthKey(entry.date) !== selectedMonth) {
         return false;
@@ -94,8 +104,15 @@ export function useHistoryScreen() {
         return false;
       }
       if (!matchesContextFilter(entry, selectedContext)) return false;
+      if (!matchesComboFilter(entry, selectedCombo)) return false;
       if (!matchesSearch(entry, normalizedQuery)) return false;
       return true;
+    });
+
+    return sortEntriesByRelevance(matchingEntries, {
+      selectedTag,
+      selectedContext,
+      selectedCombo,
     });
   }, [
     entries,
@@ -103,6 +120,7 @@ export function useHistoryScreen() {
     selectedMonth,
     selectedTag,
     selectedContext,
+    selectedCombo,
     deferredSearchQuery,
   ]);
 
@@ -112,6 +130,7 @@ export function useHistoryScreen() {
     selectedMonth !== "all" ||
     selectedTag !== "all" ||
     selectedContext !== "all" ||
+    selectedCombo !== "all" ||
     normalizeQuery(searchQuery).length > 0;
   const entryLabel = filteredEntries.length === 1 ? "entry" : "entries";
 
@@ -120,6 +139,7 @@ export function useHistoryScreen() {
     setSelectedMonth("all");
     setSelectedTag("all");
     setSelectedContext("all");
+    setSelectedCombo("all");
     setSearchQuery("");
   };
 
@@ -158,6 +178,16 @@ export function useHistoryScreen() {
     setSelectedTag,
     selectedContext,
     setSelectedContext,
+    selectedCombo,
+    selectedComboLabel: formatComboFilterLabel(selectedCombo),
+    getEntryHighlight: (entry: (typeof entries)[number]) =>
+      getEntryHighlight({
+        entry,
+        selectedTag,
+        selectedContext,
+        selectedCombo,
+      }),
+    setSelectedCombo,
     clearFilters,
     handleDeleteEntry,
   };

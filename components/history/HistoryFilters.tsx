@@ -4,6 +4,7 @@ import { moodToEmoji } from "@/utils/moodUi";
 import {
   CONTEXT_FILTER_OPTIONS,
   formatMonthLabel,
+  type ComboFilter,
   type ContextFilter,
   type MonthFilter,
   type MoodFilter,
@@ -71,6 +72,9 @@ export function HistoryFilters({
   tagOptions,
   selectedContext,
   onSelectContext,
+  selectedCombo,
+  comboLabel,
+  onClearCombo,
   filteredCount,
   entryLabel,
   hasFilters,
@@ -87,6 +91,9 @@ export function HistoryFilters({
   tagOptions: string[];
   selectedContext: ContextFilter;
   onSelectContext: (value: ContextFilter) => void;
+  selectedCombo: ComboFilter;
+  comboLabel: string;
+  onClearCombo: () => void;
   filteredCount: number;
   entryLabel: string;
   hasFilters: boolean;
@@ -170,6 +177,16 @@ export function HistoryFilters({
           />
         ))}
       </FilterSection>
+
+      {selectedCombo !== "all" ? (
+        <FilterSection title="Pattern">
+          <FilterChip
+            label={comboLabel}
+            active
+            onPress={onClearCombo}
+          />
+        </FilterSection>
+      ) : null}
 
       <Text style={styles.resultCount}>
         {filteredCount} {entryLabel}

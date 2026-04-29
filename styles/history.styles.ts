@@ -88,6 +88,14 @@ export const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 2,
   },
+  entryCardSupportive: {
+    backgroundColor: "#F5FBF6",
+    borderColor: "#CEE6D2",
+  },
+  entryCardChallenging: {
+    backgroundColor: "#FFF8F2",
+    borderColor: "#F0D5BC",
+  },
   entryTopRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -123,6 +131,36 @@ export const styles = StyleSheet.create({
     fontWeight: "700",
     color: colors.text,
     textTransform: "capitalize",
+  },
+  entryHighlightPill: {
+    alignSelf: "flex-start",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#D7E3FF",
+    backgroundColor: "#F8FAFF",
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    gap: 2,
+  },
+  entryHighlightPillSupportive: {
+    backgroundColor: "#F2FBF4",
+    borderColor: "#CDE5D1",
+  },
+  entryHighlightPillChallenging: {
+    backgroundColor: "#FFF5EC",
+    borderColor: "#F0D1B0",
+  },
+  entryHighlightLabel: {
+    ...typography.caption,
+    color: "#627082",
+    textTransform: "uppercase",
+    letterSpacing: 0.45,
+    fontWeight: "800",
+  },
+  entryHighlightDetail: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.text,
   },
   entryTags: {
     ...typography.caption,

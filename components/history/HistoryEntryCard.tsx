@@ -1,5 +1,6 @@
 import { styles } from "@/styles/history.styles";
 import type { MoodEntry } from "@/types";
+import type { EntryHighlight } from "@/utils/history";
 import { getContextPreview, formatEntryDate, truncate } from "@/utils/history";
 import { moodToEmoji } from "@/utils/moodUi";
 import React from "react";
@@ -7,10 +8,12 @@ import { Pressable, Text, View } from "react-native";
 
 export function HistoryEntryCard({
   entry,
+  highlight,
   onEdit,
   onDelete,
 }: {
   entry: MoodEntry;
+  highlight?: EntryHighlight | null;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -20,7 +23,13 @@ export function HistoryEntryCard({
   const contextPreview = truncate(getContextPreview(entry), 120);
 
   return (
-    <View style={styles.entryCard}>
+    <View
+      style={[
+        styles.entryCard,
+        highlight?.tone === "supportive" ? styles.entryCardSupportive : null,
+        highlight?.tone === "challenging" ? styles.entryCardChallenging : null,
+      ]}
+    >
       <View style={styles.entryTopRow}>
         <View style={styles.entryDateWrap}>
           <Text style={styles.entryDate}>{formatEntryDate(entry.date)}</Text>
@@ -32,6 +41,19 @@ export function HistoryEntryCard({
           <Text style={styles.entryMoodLabel}>{entry.mood}</Text>
         </View>
       </View>
+
+      {highlight ? (
+        <View
+          style={[
+            styles.entryHighlightPill,
+            highlight.tone === "supportive" ? styles.entryHighlightPillSupportive : null,
+            highlight.tone === "challenging" ? styles.entryHighlightPillChallenging : null,
+          ]}
+        >
+          <Text style={styles.entryHighlightLabel}>{highlight.label}</Text>
+          <Text style={styles.entryHighlightDetail}>{highlight.detail}</Text>
+        </View>
+      ) : null}
 
       <Text style={styles.entryTags}>{tags}</Text>
       <Text style={styles.entryContext}>{contextPreview}</Text>

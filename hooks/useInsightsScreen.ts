@@ -276,6 +276,7 @@ export function useInsightsScreen() {
         stressSignal,
         energySignal,
         bestWeekday,
+        strongestCombo,
       }),
     [
       supportiveTags,
@@ -285,6 +286,7 @@ export function useInsightsScreen() {
       stressSignal,
       energySignal,
       bestWeekday,
+      strongestCombo,
     ]
   );
   const narrativeSummary = useMemo(
@@ -298,6 +300,10 @@ export function useInsightsScreen() {
         stressSignal,
         energySignal,
         bestWeekday,
+        sleepCount: sleepCoverage.totalCount,
+        stressCount: stressCoverage.totalCount,
+        energyCount: energyCoverage.totalCount,
+        strongestCombo,
       }),
     [
       entries,
@@ -308,6 +314,10 @@ export function useInsightsScreen() {
       stressSignal,
       energySignal,
       bestWeekday,
+      sleepCoverage.totalCount,
+      stressCoverage.totalCount,
+      energyCoverage.totalCount,
+      strongestCombo,
     ]
   );
   const recoveryLens = useMemo(

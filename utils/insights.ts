@@ -94,6 +94,20 @@ export type NarrativeSummaryData = {
   summary: string;
   focus: string;
   tone: HeroTone;
+  comboTitle?: string;
+  comboDetail?: string;
+  comboTone?: "supportive" | "challenging";
+  comboFilter?: string;
+  actions?: NarrativeActionData[];
+};
+
+export type NarrativeActionData = {
+  label: string;
+  kind: "combo" | "tag" | "context";
+  combo?: string;
+  tag?: string;
+  contextKey?: MoodContextKey;
+  contextBand?: "low" | "high";
 };
 
 export type ContextDrilldownTarget = {
@@ -137,6 +151,13 @@ function formatContextFeatureLabel(feature: string) {
     rawKey === "sleep" ? "sleep" : rawKey === "stress" ? "stress" : "energy";
 
   return level === "high" ? `high ${key}` : `low ${key}`;
+}
+
+function formatComboLabel(features: [string, string]) {
+  return features
+    .map(formatContextFeatureLabel)
+    .map((part, index) => (index === 0 ? capitalize(part) : part))
+    .join(" + ");
 }
 
 function formatScoreShift(delta: number | null) {
@@ -307,7 +328,69 @@ function buildPriorityExperiment(args: {
   stressSignal?: ContextSignal | null;
   energySignal?: ContextSignal | null;
   bestWeekday?: BestWeekday;
+  strongestCombo?: ComboHighlight | null;
 }) {
+  if (
+    args.strongestCombo &&
+    args.strongestCombo.tone === "challenging" &&
+    args.strongestCombo.features.includes("high_stress") &&
+    args.strongestCombo.features.includes("low_sleep")
+  ) {
+    return {
+      label: "Main focus",
+      title: "Protect sleep before high-stress days stack up.",
+      detail:
+        "The clearest difficult pattern right now is the combination of high stress and low sleep. If you change one thing, make that overlap less likely rather than treating stress and sleep as separate issues.",
+    };
+  }
+
+  if (
+    args.strongestCombo &&
+    args.strongestCombo.tone === "challenging" &&
+    args.strongestCombo.features.includes("high_stress") &&
+    args.strongestCombo.features.some((feature) => feature.startsWith("tag:"))
+  ) {
+    const tagFeature = args.strongestCombo.features.find((feature) => feature.startsWith("tag:"));
+    const tag = tagFeature ? tagFeature.slice(4) : null;
+
+    return {
+      label: "Main focus",
+      title: tag
+        ? `Plan for #${tag} days before stress peaks.`
+        : "Plan for the high-stress combo before it peaks.",
+      detail: tag
+        ? `The clearest difficult pattern right now is the overlap between high stress and #${tag}. The best next move is to treat those days as predictable pressure days and lower the load earlier.`
+        : "The clearest difficult pattern right now is a repeated high-stress overlap. The best next move is to treat those days as predictable pressure days and lower the load earlier.",
+    };
+  }
+
+  if (
+    args.strongestCombo &&
+    args.strongestCombo.tone === "supportive" &&
+    args.strongestCombo.features.some((feature) => feature.startsWith("tag:")) &&
+    args.strongestCombo.features.some((feature) =>
+      ["high_sleep", "high_energy", "low_stress"].includes(feature)
+    )
+  ) {
+    const tagFeature = args.strongestCombo.features.find((feature) => feature.startsWith("tag:"));
+    const otherFeature = args.strongestCombo.features.find((feature) => !feature.startsWith("tag:"));
+    const tag = tagFeature ? tagFeature.slice(4) : null;
+
+    return {
+      label: "Main focus",
+      title:
+        tag && otherFeature
+          ? `Repeat #${tag} with ${formatContextFeatureLabel(otherFeature)}.`
+          : "Repeat the strongest helpful combo on purpose.",
+      detail:
+        tag && otherFeature
+          ? `Your clearest supportive pattern is #${tag} together with ${formatContextFeatureLabel(
+              otherFeature
+            )}. That pairing looks stronger than either signal on its own, so it is worth repeating deliberately.`
+          : "Your clearest supportive pattern is a repeated combo rather than one isolated signal, so it is worth repeating deliberately.",
+    };
+  }
+
   if (args.stressSignal?.delta != null && args.stressSignal.delta <= -0.8) {
     return {
       label: "Main focus",
@@ -440,6 +523,149 @@ function getNarrativeTimeframe(entries: MoodEntry[]) {
   };
 }
 
+function formatContextList(keys: MoodContextKey[]) {
+  const labels = keys.map((key) =>
+    key === "sleep" ? "sleep" : key === "stress" ? "stress" : "energy"
+  );
+
+  if (labels.length === 0) return "";
+  if (labels.length === 1) return labels[0];
+  if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
+  return `${labels[0]}, ${labels[1]}, and ${labels[2]}`;
+}
+
+function getMissingContextSentence(args: {
+  totalCheckIns: number;
+  sleepCount?: number;
+  stressCount?: number;
+  energyCount?: number;
+}) {
+  if (args.totalCheckIns < 4) return null;
+
+  const lowCoverage: MoodContextKey[] = [];
+
+  if ((args.sleepCount ?? 0) < 2) lowCoverage.push("sleep");
+  if ((args.stressCount ?? 0) < 2) lowCoverage.push("stress");
+  if ((args.energyCount ?? 0) < 2) lowCoverage.push("energy");
+
+  if (lowCoverage.length === 0) return null;
+
+  if (lowCoverage.length === 1) {
+    return `${capitalize(
+      formatContextList(lowCoverage)
+    )} may matter here too, but you have not logged it often enough yet to know.`;
+  }
+
+  return `${capitalize(
+    formatContextList(lowCoverage)
+  )} may matter here too, but there still are not enough logs to call them confidently.`;
+}
+
+function getNarrativeComboCallout(combo?: ComboHighlight | null) {
+  if (!combo || Math.abs(combo.deltaFromBaseline) < 0.9 || combo.count < 2) {
+    return null;
+  }
+
+  const label = formatComboLabel(combo.features);
+
+  if (combo.tone === "challenging") {
+    return {
+      title: "Strong combo detected",
+      detail: `${label} repeated ${combo.count} times and landed noticeably heavier than your usual pattern.`,
+      tone: "challenging" as const,
+    };
+  }
+
+  return {
+    title: "Strong combo detected",
+    detail: `${label} repeated ${combo.count} times and lined up with noticeably steadier days.`,
+    tone: "supportive" as const,
+  };
+}
+
+function pushUniqueNarrativeAction(
+  actions: NarrativeActionData[],
+  action: NarrativeActionData
+) {
+  const key =
+    action.kind === "combo"
+      ? `combo:${action.combo}`
+      : action.kind === "tag"
+        ? `tag:${action.tag}`
+        : `context:${action.contextBand}:${action.contextKey}`;
+
+  if (
+    actions.some((item) => {
+      const itemKey =
+        item.kind === "combo"
+          ? `combo:${item.combo}`
+          : item.kind === "tag"
+            ? `tag:${item.tag}`
+            : `context:${item.contextBand}:${item.contextKey}`;
+
+      return itemKey === key;
+    })
+  ) {
+    return;
+  }
+
+  actions.push(action);
+}
+
+function buildNarrativeActions(args: {
+  supportiveTag?: CountedTag;
+  strongestContext?: ContextSignal | null;
+  sleepSignal?: ContextSignal | null;
+  stressSignal?: ContextSignal | null;
+  strongestCombo?: ComboHighlight | null;
+}) {
+  const actions: NarrativeActionData[] = [];
+
+  if (args.strongestCombo && Math.abs(args.strongestCombo.deltaFromBaseline) >= 0.9) {
+    pushUniqueNarrativeAction(actions, {
+      label: "Open combo days",
+      kind: "combo",
+      combo: args.strongestCombo.features.join("|"),
+    });
+  }
+
+  if (args.stressSignal?.delta != null && args.stressSignal.delta <= -0.3) {
+    pushUniqueNarrativeAction(actions, {
+      label: "Open pressure days",
+      kind: "context",
+      contextKey: "stress",
+      contextBand: "high",
+    });
+  }
+
+  if (args.supportiveTag) {
+    pushUniqueNarrativeAction(actions, {
+      label: `Open #${args.supportiveTag.tag} days`,
+      kind: "tag",
+      tag: args.supportiveTag.tag,
+    });
+  } else if (args.sleepSignal?.delta != null && args.sleepSignal.delta >= 0.3) {
+    pushUniqueNarrativeAction(actions, {
+      label: "Open steadier days",
+      kind: "context",
+      contextKey: "sleep",
+      contextBand: "high",
+    });
+  } else if (
+    args.strongestContext?.key === "energy" &&
+    (args.strongestContext.delta ?? 0) >= 0.3
+  ) {
+    pushUniqueNarrativeAction(actions, {
+      label: "Open steadier days",
+      kind: "context",
+      contextKey: "energy",
+      contextBand: "high",
+    });
+  }
+
+  return actions.slice(0, 3);
+}
+
 function hasStrongStressDrag(signal?: ContextSignal | null) {
   return signal?.key === "stress" && (signal.delta ?? 0) <= -0.8;
 }
@@ -452,8 +678,23 @@ function getSupportPhrase(args: {
   supportiveTag?: CountedTag;
   sleepSignal?: ContextSignal | null;
   energySignal?: ContextSignal | null;
+  strongestCombo?: ComboHighlight | null;
 }) {
   const parts: string[] = [];
+
+  if (
+    args.strongestCombo &&
+    args.strongestCombo.tone === "supportive" &&
+    args.strongestCombo.features.some((feature) => feature.startsWith("tag:")) &&
+    args.strongestCombo.features.some((feature) => !feature.startsWith("tag:"))
+  ) {
+    const tagFeature = args.strongestCombo.features.find((feature) => feature.startsWith("tag:"));
+    const otherFeature = args.strongestCombo.features.find((feature) => !feature.startsWith("tag:"));
+
+    if (tagFeature && otherFeature) {
+      return `#${tagFeature.slice(4)} together with ${formatContextFeatureLabel(otherFeature)}`;
+    }
+  }
 
   if (args.sleepSignal && hasClearLift(args.sleepSignal)) {
     parts.push("better sleep");
@@ -513,7 +754,33 @@ function getDriverSentence(args: {
   sleepSignal?: ContextSignal | null;
   stressSignal?: ContextSignal | null;
   energySignal?: ContextSignal | null;
+  strongestCombo?: ComboHighlight | null;
 }) {
+  if (
+    args.strongestCombo &&
+    args.strongestCombo.tone === "challenging" &&
+    args.strongestCombo.features.includes("high_stress") &&
+    args.strongestCombo.features.includes("low_sleep")
+  ) {
+    return "The clearest drag looks like high stress landing on low-sleep days, which is a tougher mix than either signal on its own.";
+  }
+
+  if (
+    args.strongestCombo &&
+    args.strongestCombo.tone === "supportive" &&
+    args.strongestCombo.features.some((feature) => feature.startsWith("tag:")) &&
+    args.strongestCombo.features.some((feature) => !feature.startsWith("tag:"))
+  ) {
+    const tagFeature = args.strongestCombo.features.find((feature) => feature.startsWith("tag:"));
+    const otherFeature = args.strongestCombo.features.find((feature) => !feature.startsWith("tag:"));
+
+    if (tagFeature && otherFeature) {
+      return `The clearest lift seems to come from #${tagFeature.slice(
+        4
+      )} together with ${formatContextFeatureLabel(otherFeature)}, which looks stronger than either one alone.`;
+    }
+  }
+
   const drag =
     args.stressSignal?.delta != null && args.stressSignal.delta <= -0.3
       ? "Stress looks like the clearest drag"
@@ -1330,6 +1597,7 @@ export function buildAnalysisExperiments(args: {
   stressSignal?: ContextSignal | null;
   energySignal?: ContextSignal | null;
   bestWeekday?: BestWeekday;
+  strongestCombo?: ComboHighlight | null;
 }) {
   const cards: ExperimentCardData[] = [];
   const helpfulSignal =
@@ -1411,6 +1679,10 @@ export function buildNarrativeSummary(args: {
   stressSignal?: ContextSignal | null;
   energySignal?: ContextSignal | null;
   bestWeekday?: BestWeekday;
+  sleepCount?: number;
+  stressCount?: number;
+  energyCount?: number;
+  strongestCombo?: ComboHighlight | null;
 }) {
   const priority = buildPriorityExperiment(args);
   const direction = getDirectionSentence(args.entries);
@@ -1421,6 +1693,20 @@ export function buildNarrativeSummary(args: {
   const recentBalance = getRecentMoodBalance(args.entries);
   const supportPhrase = getSupportPhrase(args);
   const timeframe = getNarrativeTimeframe(args.entries);
+  const missingContextSentence = getMissingContextSentence({
+    totalCheckIns: args.entries.length,
+    sleepCount: args.sleepCount,
+    stressCount: args.stressCount,
+    energyCount: args.energyCount,
+  });
+  const comboCallout = getNarrativeComboCallout(args.strongestCombo);
+  const actions = buildNarrativeActions({
+    supportiveTag: args.supportiveTag,
+    strongestContext: args.strongestContext,
+    sleepSignal: args.sleepSignal,
+    stressSignal: args.stressSignal,
+    strongestCombo: args.strongestCombo,
+  });
 
   let tone: HeroTone = "steady";
 
@@ -1444,6 +1730,29 @@ export function buildNarrativeSummary(args: {
   if (args.entries.length < 4) {
     summary =
       `This is still an early read from ${timeframe.label}, but the app is starting to separate the mood itself from the conditions around it. A few more check-ins with tags or context will make the story feel much more personal.`;
+  } else if (
+    args.strongestCombo &&
+    args.strongestCombo.tone === "challenging" &&
+    args.strongestCombo.features.includes("high_stress") &&
+    args.strongestCombo.features.includes("low_sleep")
+  ) {
+    summary = `Across ${timeframe.label}, the clearest difficult pattern is not just stress or sleep on their own, but high stress landing on low-sleep days. That overlap seems to make the heavier moods more likely, so treating those days as a specific combo may help more than addressing each factor separately.`;
+  } else if (
+    args.strongestCombo &&
+    args.strongestCombo.tone === "supportive" &&
+    args.strongestCombo.features.some((feature) => feature.startsWith("tag:")) &&
+    args.strongestCombo.features.some((feature) => !feature.startsWith("tag:"))
+  ) {
+    const tagFeature = args.strongestCombo.features.find((feature) => feature.startsWith("tag:"));
+    const otherFeature = args.strongestCombo.features.find((feature) => !feature.startsWith("tag:"));
+    summary =
+      tagFeature && otherFeature
+        ? `Across ${timeframe.label}, the clearest support looks like a combination rather than one isolated habit. #${tagFeature.slice(
+            4
+          )} together with ${formatContextFeatureLabel(
+            otherFeature
+          )} seems to mark the steadier days more clearly than either signal on its own.`
+        : summary;
   } else if (hasStrongStressDrag(args.stressSignal) && recentBalance.hardShare >= 0.5) {
     summary = args.challengingTag
       ? `Across ${timeframe.label}, this looks less like random bad days and more like a pressure pattern. Stress is the clearest drag, and #${args.challengingTag.tag} keeps showing up around the heavier dips. ${/bounce back/i.test(recoveryLens.title) ? "The good sign is that you often recover after the rougher days." : "Right now the harder days seem to linger more than they release quickly."}`
@@ -1466,11 +1775,20 @@ export function buildNarrativeSummary(args: {
     )} seem to support the steadier days, and the useful next step is probably repeating those conditions more deliberately.`;
   }
 
+  if (missingContextSentence) {
+    summary = `${summary} ${missingContextSentence}`;
+  }
+
   return {
     eyebrow: "Plain-English read",
     summary,
     focus: priority.title,
     tone,
+    comboTitle: comboCallout?.title,
+    comboDetail: comboCallout?.detail,
+    comboTone: comboCallout?.tone,
+    comboFilter: comboCallout && args.strongestCombo ? args.strongestCombo.features.join("|") : undefined,
+    actions,
   };
 }
 
