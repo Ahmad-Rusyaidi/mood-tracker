@@ -13,6 +13,10 @@ export default function JournalScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.screenHeader}>
+        <Text style={styles.backHint}>Return to the screen you came from.</Text>
+      </View>
+
       {screen.isLoading ? (
         <View style={styles.centerState}>
           <Text style={styles.stateTitle}>Loading your history...</Text>

@@ -24,12 +24,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="history"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
         name="insights"
         options={{
           title: 'Insights',
