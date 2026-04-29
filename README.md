@@ -101,12 +101,15 @@ The app already has a solid core and is beyond starter level in the main mood fl
 - journal timeline
 - journal filters by mood, month, and tag
 - jump from journal entry back to that day
+- insight cards can drill into Journal with stack-style back navigation
+- Journal back button returns users to the exact screen they came from
 - insights tab
 - weekly and monthly mood summaries
 - current streak, longest streak, and most common mood insights
 - top tags and hard-day tag pattern summaries
 - weekday rhythm insights when enough data exists
 - optional sleep, energy, and stress context logging
+- future dates stay in preview mode so they do not distort streaks or insights
 - backup export, import, merge, and full restore
 - settings tab
 - export data
@@ -124,11 +127,17 @@ The app already has a solid core and is beyond starter level in the main mood fl
 Each main area should do one job clearly:
 
 - `Home`: log today, use tags, and create a tag on demand while checking in
-- `Journal`: browse and reopen past entries
-- `Insights`: view trends, recaps, and pattern summaries
+- `Journal`: browse, filter, and reopen past entries without losing the screen you drilled in from
+- `Insights`: view trends, recaps, pattern summaries, and jump into matching Journal entries for proof
 - `Settings`: manage reminders, saved custom tags, export, and preferences
 
 This keeps reflection in one place instead of repeating it across multiple tabs.
+
+## Navigation Notes
+
+- `Insights -> Journal` is a drill-in flow, not a tab switch, so Back returns to the exact insight view you were using
+- `Journal -> Home` still works when you reopen a specific date to edit that day
+- future dates can be opened from the calendar, but they stay preview-only until that date arrives
 
 ## Tag Behavior
 
