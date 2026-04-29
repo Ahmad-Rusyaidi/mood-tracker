@@ -1,7 +1,11 @@
 import {
+  AnalysisLensCard,
+  AnalysisProfileCard,
   CompareCard,
+  ExperimentCard,
   GuidanceCard,
   HeroCard,
+  NarrativeSummaryCard,
   PatternCard,
   SectionHeader,
   SignalCard,
@@ -129,6 +133,36 @@ export default function InsightsScreen() {
               confidence={insights.weekly.monthComparisonConfidence}
               onPress={openMonthHistory}
             />
+          </View>
+
+          <View style={styles.section}>
+            <SectionHeader
+              title="Deeper read"
+              subtitle="A fuller interpretation of your recent emotions, tags, and context signals together."
+            />
+
+            <NarrativeSummaryCard {...insights.analysis.narrative} />
+            <AnalysisProfileCard {...insights.analysis.profile} />
+
+            <View style={styles.grid}>
+              {insights.analysis.lenses.map((card) => (
+                <AnalysisLensCard
+                  key={`${card.label}-${card.title}`}
+                  {...card}
+                  twoUp={insights.layout.twoUpAnalysis}
+                />
+              ))}
+            </View>
+
+            <View style={styles.grid}>
+              {insights.analysis.experiments.map((card) => (
+                <ExperimentCard
+                  key={`${card.label}-${card.title}`}
+                  {...card}
+                  twoUp={insights.layout.twoUpAnalysis}
+                />
+              ))}
+            </View>
           </View>
 
           <View style={styles.section}>

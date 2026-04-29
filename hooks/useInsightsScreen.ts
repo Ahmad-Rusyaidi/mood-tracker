@@ -6,6 +6,7 @@ import {
   getComboHighlights,
   getContextCoverage,
   getContextSignals,
+  getEntriesForWeek,
   getEntriesForMonth,
   getLongestMoodStreak,
   getMonthComparison,
@@ -22,6 +23,14 @@ import {
   getWeekdayInsights,
 } from "@/utils/moodStats";
 import {
+  buildAnalysisExperiments,
+  buildAnalysisLenses,
+  buildAnalysisProfile,
+  buildNarrativeSummary,
+  buildRecoveryLens,
+  buildSignalQualityLens,
+  buildTrajectoryLens,
+  buildVolatilityLens,
   buildEvidenceCards,
   buildPatternCards,
   getActionStory,
@@ -75,6 +84,10 @@ export function useInsightsScreen() {
   const mostCommonMood = useMemo(() => getMostCommonMood(entries), [entries]);
   const weekSummary = useMemo(() => getWeekSummary(map, today), [map, today]);
   const monthSummary = useMemo(() => getMonthSummary(map, thisMonth), [map, thisMonth]);
+  const currentWeekEntries = useMemo(
+    () => getEntriesForWeek(entries, today),
+    [entries, today]
+  );
   const currentMonthEntries = useMemo(
     () => getEntriesForMonth(entries, thisMonth),
     [entries, thisMonth]
@@ -113,6 +126,28 @@ export function useInsightsScreen() {
   const sleepSignal = contextSignals.find((signal) => signal.key === "sleep") ?? null;
   const stressSignal = contextSignals.find((signal) => signal.key === "stress") ?? null;
   const energySignal = contextSignals.find((signal) => signal.key === "energy") ?? null;
+  const taggedCount = useMemo(
+    () => entries.filter((entry) => (entry.tags?.length ?? 0) > 0).length,
+    [entries]
+  );
+  const contextualCount = useMemo(
+    () =>
+      entries.filter(
+        (entry) => entry.sleep != null || entry.stress != null || entry.energy != null
+      ).length,
+    [entries]
+  );
+  const taggedThisWeek = useMemo(
+    () => currentWeekEntries.filter((entry) => (entry.tags?.length ?? 0) > 0).length,
+    [currentWeekEntries]
+  );
+  const contextualThisWeek = useMemo(
+    () =>
+      currentWeekEntries.filter(
+        (entry) => entry.sleep != null || entry.stress != null || entry.energy != null
+      ).length,
+    [currentWeekEntries]
+  );
 
   const weekStory = useMemo(
     () =>
@@ -181,6 +216,116 @@ export function useInsightsScreen() {
       }),
     [weekCount, currentStreak, supportiveTags, challengingTags, strongestContext, bestWeekday]
   );
+  const analysisProfile = useMemo(
+    () =>
+      buildAnalysisProfile({
+        weekCount,
+        totalCheckIns: entries.length,
+        taggedCount,
+        contextualCount,
+        weekSummary,
+        comparison,
+        mostCommonMood,
+        supportiveTag: supportiveTags[0],
+        challengingTag: challengingTags[0],
+        strongestContext,
+      }),
+    [
+      weekCount,
+      entries.length,
+      taggedCount,
+      contextualCount,
+      weekSummary,
+      comparison,
+      mostCommonMood,
+      supportiveTags,
+      challengingTags,
+      strongestContext,
+    ]
+  );
+  const analysisLenses = useMemo(
+    () =>
+      buildAnalysisLenses({
+        weekSummary,
+        comparison,
+        mostCommonMood,
+        supportiveTag: supportiveTags[0],
+        challengingTag: challengingTags[0],
+        strongestContext,
+        bestWeekday,
+        strongestCombo,
+      }),
+    [
+      weekSummary,
+      comparison,
+      mostCommonMood,
+      supportiveTags,
+      challengingTags,
+      strongestContext,
+      bestWeekday,
+      strongestCombo,
+    ]
+  );
+  const analysisExperiments = useMemo(
+    () =>
+      buildAnalysisExperiments({
+        supportiveTag: supportiveTags[0],
+        challengingTag: challengingTags[0],
+        strongestContext,
+        sleepSignal,
+        stressSignal,
+        energySignal,
+        bestWeekday,
+      }),
+    [
+      supportiveTags,
+      challengingTags,
+      strongestContext,
+      sleepSignal,
+      stressSignal,
+      energySignal,
+      bestWeekday,
+    ]
+  );
+  const narrativeSummary = useMemo(
+    () =>
+      buildNarrativeSummary({
+        entries,
+        supportiveTag: supportiveTags[0],
+        challengingTag: challengingTags[0],
+        strongestContext,
+        sleepSignal,
+        stressSignal,
+        energySignal,
+        bestWeekday,
+      }),
+    [
+      entries,
+      supportiveTags,
+      challengingTags,
+      strongestContext,
+      sleepSignal,
+      stressSignal,
+      energySignal,
+      bestWeekday,
+    ]
+  );
+  const recoveryLens = useMemo(
+    () => buildRecoveryLens(entries),
+    [entries]
+  );
+  const signalQualityLens = useMemo(
+    () =>
+      buildSignalQualityLens({
+        totalCheckIns: entries.length,
+        weekCount,
+        taggedThisWeek,
+        contextualThisWeek,
+      }),
+    [entries.length, weekCount, taggedThisWeek, contextualThisWeek]
+  );
+  const trajectoryLens = useMemo(() => buildTrajectoryLens(entries), [entries]);
+  const volatilityLens = useMemo(() => buildVolatilityLens(entries), [entries]);
 
   const strongestContextTarget = useMemo(
     () => getContextDrilldownTarget(strongestContext),
@@ -245,6 +390,7 @@ export function useInsightsScreen() {
     currentMonthKey,
     layout: {
       signalCardWidth: Math.min(Math.max(width - 56, 260), 312),
+      twoUpAnalysis: width >= 430,
       twoUpPatterns: width >= 430,
       twoUpSpotlights: width >= 440,
       twoUpDetails: width >= 430,
@@ -261,6 +407,18 @@ export function useInsightsScreen() {
         monthComparison.previousCount
       ),
       mostCommonMood,
+    },
+    analysis: {
+      narrative: narrativeSummary,
+      profile: analysisProfile,
+      lenses: [
+        ...analysisLenses,
+        trajectoryLens,
+        volatilityLens,
+        recoveryLens,
+        signalQualityLens,
+      ],
+      experiments: analysisExperiments,
     },
     highlights: {
       evidenceCards,

@@ -8,6 +8,14 @@ const {
 } = require("../utils/moodStats");
 const { buildReadableSummary } = require("../utils/shareSummary");
 const {
+  buildAnalysisExperiments,
+  buildAnalysisLenses,
+  buildAnalysisProfile,
+  buildNarrativeSummary,
+  buildRecoveryLens,
+  buildSignalQualityLens,
+  buildTrajectoryLens,
+  buildVolatilityLens,
   getMoodMixSummary,
   getSignalDeltaText,
   getWeekdayRhythmSummary,
@@ -188,6 +196,344 @@ run("getSignalDeltaText formats signal swing labels", () => {
   });
 
   assert.equal(label, "2.0 point swing");
+});
+
+run("buildAnalysisProfile explains pressure-sensitive patterns clearly", () => {
+  const profile = buildAnalysisProfile({
+    weekCount: 4,
+    totalCheckIns: 8,
+    taggedCount: 6,
+    contextualCount: 7,
+    weekSummary: {
+      happy: 0,
+      neutral: 1,
+      sad: 2,
+      anxious: 1,
+      angry: 0,
+    },
+    comparison: {
+      delta: -0.9,
+      previousCount: 4,
+    },
+    mostCommonMood: { mood: "sad", count: 3 },
+    supportiveTag: { tag: "rest", count: 3 },
+    challengingTag: { tag: "work", count: 4 },
+    strongestContext: {
+      key: "stress",
+      lowCount: 2,
+      highCount: 4,
+      lowAverageScore: 3.5,
+      highAverageScore: 1.5,
+      delta: -2,
+    },
+  });
+
+  assert.match(profile.title, /pressure-sensitive/i);
+  assert.match(profile.body, /#work/);
+  assert.match(profile.evidence, /8 check-ins/);
+});
+
+run("buildAnalysisLenses combines emotion, help, strain, and rhythm clues", () => {
+  const lenses = buildAnalysisLenses({
+    weekSummary: {
+      happy: 1,
+      neutral: 2,
+      sad: 1,
+      anxious: 0,
+      angry: 0,
+    },
+    comparison: {
+      delta: 0.4,
+      previousCount: 4,
+    },
+    mostCommonMood: { mood: "neutral", count: 5 },
+    supportiveTag: { tag: "walk", count: 3 },
+    challengingTag: { tag: "deadline", count: 2 },
+    strongestContext: {
+      key: "sleep",
+      lowCount: 2,
+      highCount: 3,
+      lowAverageScore: 2,
+      highAverageScore: 4,
+      delta: 2,
+    },
+    bestWeekday: { label: "Tue", count: 3 },
+    strongestCombo: {
+      features: ["high_sleep", "tag:walk"],
+      count: 3,
+      averageScore: 4.5,
+      deltaFromBaseline: 1.2,
+      tone: "supportive",
+    },
+  });
+
+  assert.ok(lenses.length >= 3);
+  assert.ok(lenses.some((item) => item.label === "Emotion pattern"));
+  assert.ok(lenses.some((item) => item.label === "What helps"));
+  assert.ok(lenses.some((item) => item.label === "What adds strain"));
+});
+
+run("buildAnalysisExperiments produces concrete next-step suggestions", () => {
+  const experiments = buildAnalysisExperiments({
+    supportiveTag: { tag: "walk", count: 3 },
+    challengingTag: { tag: "work", count: 4 },
+    sleepSignal: {
+      key: "sleep",
+      lowCount: 2,
+      highCount: 4,
+      lowAverageScore: 2,
+      highAverageScore: 4,
+      delta: 2,
+    },
+    stressSignal: {
+      key: "stress",
+      lowCount: 2,
+      highCount: 4,
+      lowAverageScore: 3.5,
+      highAverageScore: 1.5,
+      delta: -2,
+    },
+    energySignal: null,
+    bestWeekday: { label: "Fri", count: 2 },
+  });
+
+  assert.equal(experiments.length, 3);
+  assert.equal(experiments[0]?.label, "Main focus");
+  assert.ok(
+    experiments.some((item) => /#work/i.test(item.title) || /#work/i.test(item.detail))
+  );
+  assert.ok(
+    experiments.some((item) => /walk/i.test(item.title) || /walk/i.test(item.detail))
+  );
+});
+
+run("buildRecoveryLens identifies when hard days usually bounce back", () => {
+  const lens = buildRecoveryLens([
+    makeEntry("2026-04-20", "sad"),
+    makeEntry("2026-04-21", "neutral"),
+    makeEntry("2026-04-23", "anxious"),
+    makeEntry("2026-04-24", "happy"),
+    makeEntry("2026-04-26", "sad"),
+    makeEntry("2026-04-27", "neutral"),
+  ]);
+
+  assert.match(lens.title, /bounce back/i);
+  assert.match(lens.detail, /3 harder days/);
+});
+
+run("buildSignalQualityLens calls out patchy recent context coverage", () => {
+  const lens = buildSignalQualityLens({
+    totalCheckIns: 10,
+    weekCount: 5,
+    taggedThisWeek: 1,
+    contextualThisWeek: 2,
+  });
+
+  assert.match(lens.title, /reasons are still patchy/i);
+  assert.match(lens.detail, /1 of 5 recent days had tags/i);
+});
+
+run("buildTrajectoryLens detects when the recent direction is getting heavier", () => {
+  const lens = buildTrajectoryLens([
+    makeEntry("2026-04-20", "happy"),
+    makeEntry("2026-04-21", "happy"),
+    makeEntry("2026-04-22", "neutral"),
+    makeEntry("2026-04-23", "neutral"),
+    makeEntry("2026-04-24", "sad"),
+    makeEntry("2026-04-25", "anxious"),
+    makeEntry("2026-04-26", "sad"),
+    makeEntry("2026-04-27", "angry"),
+  ]);
+
+  assert.match(lens.title, /trending heavier/i);
+  assert.match(lens.detail, /heavier than the earlier half/i);
+});
+
+run("buildVolatilityLens detects stronger entry-to-entry mood swings", () => {
+  const lens = buildVolatilityLens([
+    makeEntry("2026-04-20", "happy"),
+    makeEntry("2026-04-21", "angry"),
+    makeEntry("2026-04-22", "happy"),
+    makeEntry("2026-04-23", "sad"),
+    makeEntry("2026-04-24", "happy"),
+  ]);
+
+  assert.match(lens.title, /swinging more than settling/i);
+  assert.match(lens.detail, /points from one check-in to the next/i);
+});
+
+run("buildAnalysisExperiments prioritizes the clearest main focus first", () => {
+  const experiments = buildAnalysisExperiments({
+    challengingTag: { tag: "work", count: 5 },
+    supportiveTag: { tag: "walk", count: 3 },
+    sleepSignal: null,
+    stressSignal: {
+      key: "stress",
+      lowCount: 2,
+      highCount: 5,
+      lowAverageScore: 3.5,
+      highAverageScore: 1,
+      delta: -2.5,
+    },
+    energySignal: null,
+    bestWeekday: { label: "Tue", count: 2 },
+  });
+
+  assert.equal(experiments[0]?.label, "Main focus");
+  assert.match(experiments[0]?.title ?? "", /#work/i);
+});
+
+run("buildNarrativeSummary creates a plain-English story from the strongest signals", () => {
+  const narrative = buildNarrativeSummary({
+    entries: [
+      makeEntry("2026-04-20", "happy"),
+      makeEntry("2026-04-21", "neutral"),
+      makeEntry("2026-04-22", "happy"),
+      makeEntry("2026-04-23", "sad"),
+      makeEntry("2026-04-24", "anxious"),
+      makeEntry("2026-04-25", "sad"),
+      makeEntry("2026-04-26", "neutral"),
+    ],
+    supportiveTag: { tag: "walk", count: 3 },
+    challengingTag: { tag: "work", count: 4 },
+    strongestContext: {
+      key: "stress",
+      lowCount: 2,
+      highCount: 4,
+      lowAverageScore: 3.5,
+      highAverageScore: 1.5,
+      delta: -2,
+    },
+    sleepSignal: {
+      key: "sleep",
+      lowCount: 2,
+      highCount: 4,
+      lowAverageScore: 2,
+      highAverageScore: 4,
+      delta: 2,
+    },
+    stressSignal: {
+      key: "stress",
+      lowCount: 2,
+      highCount: 4,
+      lowAverageScore: 3.5,
+      highAverageScore: 1.5,
+      delta: -2,
+    },
+    energySignal: null,
+    bestWeekday: { label: "Fri", count: 2 },
+  });
+
+  assert.equal(narrative.eyebrow, "Plain-English read");
+  assert.ok(
+    /does not look random/i.test(narrative.summary) ||
+      /stress is the clearest drag/i.test(narrative.summary) ||
+      /pressure pattern/i.test(narrative.summary)
+  );
+  assert.match(narrative.summary, /#walk/i);
+  assert.match(narrative.focus, /#work/i);
+});
+
+run("buildNarrativeSummary uses a pressure-pattern story when stress and hard moods dominate", () => {
+  const narrative = buildNarrativeSummary({
+    entries: [
+      makeEntry("2026-04-20", "neutral"),
+      makeEntry("2026-04-21", "sad"),
+      makeEntry("2026-04-22", "anxious"),
+      makeEntry("2026-04-23", "sad"),
+      makeEntry("2026-04-24", "angry"),
+      makeEntry("2026-04-25", "sad"),
+    ],
+    supportiveTag: { tag: "rest", count: 2 },
+    challengingTag: { tag: "work", count: 4 },
+    strongestContext: {
+      key: "stress",
+      lowCount: 2,
+      highCount: 4,
+      lowAverageScore: 3.5,
+      highAverageScore: 1,
+      delta: -2.5,
+    },
+    sleepSignal: null,
+    stressSignal: {
+      key: "stress",
+      lowCount: 2,
+      highCount: 4,
+      lowAverageScore: 3.5,
+      highAverageScore: 1,
+      delta: -2.5,
+    },
+    energySignal: null,
+    bestWeekday: null,
+  });
+
+  assert.match(narrative.summary, /pressure pattern/i);
+  assert.match(narrative.summary, /#work/i);
+});
+
+run("buildNarrativeSummary uses a volatility story when swings are the main pattern", () => {
+  const narrative = buildNarrativeSummary({
+    entries: [
+      makeEntry("2026-04-20", "happy"),
+      makeEntry("2026-04-21", "angry"),
+      makeEntry("2026-04-22", "happy"),
+      makeEntry("2026-04-23", "sad"),
+      makeEntry("2026-04-24", "happy"),
+      makeEntry("2026-04-25", "angry"),
+    ],
+    supportiveTag: { tag: "walk", count: 2 },
+    challengingTag: undefined,
+    strongestContext: null,
+    sleepSignal: null,
+    stressSignal: null,
+    energySignal: null,
+    bestWeekday: null,
+  });
+
+  assert.match(narrative.summary, /bigger story is volatility/i);
+  assert.match(narrative.summary, /#walk/i);
+});
+
+run("buildNarrativeSummary uses early timeframe wording for the first few check-ins", () => {
+  const narrative = buildNarrativeSummary({
+    entries: [
+      makeEntry("2026-04-20", "happy"),
+      makeEntry("2026-04-22", "neutral"),
+      makeEntry("2026-04-24", "sad"),
+    ],
+    supportiveTag: undefined,
+    challengingTag: undefined,
+    strongestContext: null,
+    sleepSignal: null,
+    stressSignal: null,
+    energySignal: null,
+    bestWeekday: null,
+  });
+
+  assert.match(narrative.summary, /your first few check-ins/i);
+});
+
+run("buildNarrativeSummary uses this-week wording when recent data is concentrated", () => {
+  const narrative = buildNarrativeSummary({
+    entries: [
+      makeEntry("2026-04-21", "happy"),
+      makeEntry("2026-04-22", "neutral"),
+      makeEntry("2026-04-23", "sad"),
+      makeEntry("2026-04-24", "neutral"),
+      makeEntry("2026-04-25", "happy"),
+      makeEntry("2026-04-26", "neutral"),
+      makeEntry("2026-04-27", "happy"),
+    ],
+    supportiveTag: { tag: "walk", count: 3 },
+    challengingTag: { tag: "work", count: 2 },
+    strongestContext: null,
+    sleepSignal: null,
+    stressSignal: null,
+    energySignal: null,
+    bestWeekday: null,
+  });
+
+  assert.match(narrative.summary, /this week/i);
 });
 
 console.log("All interpretation tests passed.");

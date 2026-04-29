@@ -3,6 +3,10 @@ import type { Mood } from "@/types";
 import type { ContextCoverage, ContextSignal, WeekWarning } from "@/utils/moodStats";
 import { moodToEmoji } from "@/utils/moodUi";
 import {
+  type AnalysisLensData,
+  type AnalysisProfileData,
+  type ExperimentCardData,
+  type NarrativeSummaryData,
   getSignalConfidenceLine,
   getSignalDeltaText,
   getSignalMeterValue,
@@ -126,6 +130,160 @@ export function GuidanceCard({ eyebrow, title, body, prompt }: GuidanceCardData)
         <Text style={styles.promptLabel}>Try this</Text>
         <Text style={styles.promptText}>{prompt}</Text>
       </View>
+    </View>
+  );
+}
+
+export function AnalysisProfileCard({
+  eyebrow,
+  title,
+  body,
+  evidence,
+  tone,
+}: AnalysisProfileData) {
+  return (
+    <View
+      style={[
+        styles.analysisProfileCard,
+        tone === "lift" ? styles.analysisProfileCardLift : null,
+        tone === "care" ? styles.analysisProfileCardCare : null,
+      ]}
+    >
+      <Text
+        style={[
+          styles.analysisProfileEyebrow,
+          tone === "lift" ? styles.analysisProfileEyebrowLift : null,
+          tone === "care" ? styles.analysisProfileEyebrowCare : null,
+        ]}
+      >
+        {eyebrow}
+      </Text>
+      <Text
+        style={[
+          styles.analysisProfileTitle,
+          tone === "lift" ? styles.analysisProfileTitleLift : null,
+          tone === "care" ? styles.analysisProfileTitleCare : null,
+        ]}
+      >
+        {title}
+      </Text>
+      <Text
+        style={[
+          styles.analysisProfileBody,
+          tone === "lift" ? styles.analysisProfileBodyLift : null,
+          tone === "care" ? styles.analysisProfileBodyCare : null,
+        ]}
+      >
+        {body}
+      </Text>
+      <View style={styles.analysisEvidencePill}>
+        <Text style={styles.analysisEvidenceText}>{evidence}</Text>
+      </View>
+    </View>
+  );
+}
+
+export function NarrativeSummaryCard({
+  eyebrow,
+  summary,
+  focus,
+  tone,
+}: NarrativeSummaryData) {
+  return (
+    <View
+      style={[
+        styles.narrativeCard,
+        tone === "lift" ? styles.narrativeCardLift : null,
+        tone === "care" ? styles.narrativeCardCare : null,
+      ]}
+    >
+      <Text
+        style={[
+          styles.narrativeEyebrow,
+          tone === "lift" ? styles.narrativeEyebrowLift : null,
+          tone === "care" ? styles.narrativeEyebrowCare : null,
+        ]}
+      >
+        {eyebrow}
+      </Text>
+      <Text
+        style={[
+          styles.narrativeSummary,
+          tone === "lift" ? styles.narrativeSummaryLift : null,
+          tone === "care" ? styles.narrativeSummaryCare : null,
+        ]}
+      >
+        {summary}
+      </Text>
+      <View
+        style={[
+          styles.narrativeFocusPill,
+          tone === "lift" ? styles.narrativeFocusPillLift : null,
+          tone === "care" ? styles.narrativeFocusPillCare : null,
+        ]}
+      >
+        <Text
+          style={[
+            styles.narrativeFocusLabel,
+            tone === "lift" ? styles.narrativeFocusLabelLift : null,
+            tone === "care" ? styles.narrativeFocusLabelCare : null,
+          ]}
+        >
+          Main focus
+        </Text>
+        <Text
+          style={[
+            styles.narrativeFocusText,
+            tone === "lift" ? styles.narrativeFocusTextLift : null,
+            tone === "care" ? styles.narrativeFocusTextCare : null,
+          ]}
+        >
+          {focus}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+export function AnalysisLensCard({
+  label,
+  title,
+  detail,
+  tone,
+  twoUp,
+}: AnalysisLensData & { twoUp: boolean }) {
+  return (
+    <View
+      style={[
+        styles.analysisLensCard,
+        twoUp ? styles.halfCard : styles.fullCard,
+        tone === "supportive" ? styles.analysisLensCardSupportive : null,
+        tone === "challenging" ? styles.analysisLensCardChallenging : null,
+      ]}
+    >
+      <Text style={styles.analysisLensLabel}>{label}</Text>
+      <Text style={styles.analysisLensTitle}>{title}</Text>
+      <Text style={styles.analysisLensDetail}>{detail}</Text>
+    </View>
+  );
+}
+
+export function ExperimentCard({
+  label,
+  title,
+  detail,
+  twoUp,
+}: ExperimentCardData & { twoUp: boolean }) {
+  return (
+    <View
+      style={[
+        styles.experimentCard,
+        twoUp ? styles.halfCard : styles.fullCard,
+      ]}
+    >
+      <Text style={styles.experimentLabel}>{label}</Text>
+      <Text style={styles.experimentTitle}>{title}</Text>
+      <Text style={styles.experimentDetail}>{detail}</Text>
     </View>
   );
 }
